@@ -1,0 +1,23 @@
+{
+    "report_channel_id": "",
+    "log_channel_id": "",
+    "thumbnail_icon_url": "",
+    "permissions": {
+        "all": [],
+        "iron": []
+    },
+    "ranks": {
+        "1": {
+            "add": [],
+            "remove": []
+        },
+        "3": {
+            "add": [],
+            "remove": []
+        },
+        "4": {
+            "add": [],
+            "remove": []
+        }
+    }
+}

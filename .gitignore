@@ -1,0 +1,5 @@
+design
+dist
+.env
+node_modules
+storage

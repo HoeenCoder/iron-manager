@@ -15,6 +15,8 @@ export interface IronDistributionResults {
     rankPermsError: Discord.GuildMember[]
 }
 
+export let recentlyUpdatedNames: string[] = [];
+
 export async function distributeIron(members: Discord.GuildMember[], type: Logger.IronAchivementType): Promise<IronDistributionResults | Error> {
     const verificationTimestamp = Logger.getCurrentWeekTimestamp();
     const completedIDs: string[] = [];
@@ -75,6 +77,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: Logge
     }
 
     // Update usernames, ranks
+    recentlyUpdatedNames = [];
     for (let member of attemptToIssue) {
         const parsed = parseUsername(member.displayName);
         if (!parsed) {
@@ -89,7 +92,8 @@ export async function distributeIron(members: Discord.GuildMember[], type: Logge
             results.namePermsError.push([member, newNumerals]);
             continue;
         }
-        member.setNickname(username);
+        recentlyUpdatedNames.push(member.id);
+        await member.setNickname(username);
 
         // Try to promote, if an error occurs due to permissions...
         if (await tryPromotion(member, '' + parsed[0])) {
@@ -99,6 +103,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: Logge
 
         results.issued.push(member);
     }
+    recentlyUpdatedNames = [];
 
     return results;
 }

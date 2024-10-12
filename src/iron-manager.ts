@@ -166,12 +166,22 @@ function createUsername(iron: number, name: string): string {
  * @returns true if an error occurs, false if not.
  */
 async function tryPromotion(member: Discord.GuildMember, iron: string): Promise<boolean> {
+    // 1. Check to see if theres a promotion to perform
     if (!Object.keys(Config.ranks).includes(iron)) return false; // No promotion at this iron count
     const rank = Config.ranks[iron];
 
+    // 2. Validate the user has the required role(s)
+    if (!member.roles.cache.hasAll(...rank.required)) {
+        // Member lacks one or more required roles
+        return false;
+    }
+
+    // 3. Check if the bot can manage this user
     if (!member.manageable) {
         return true;
     }
+
+    // 4. Update roles
     const roleManager = member.guild.roles;
     const roles = rank.add.concat(rank.remove);
 

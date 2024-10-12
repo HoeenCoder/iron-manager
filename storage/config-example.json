@@ -8,14 +8,17 @@
     },
     "ranks": {
         "1": {
+            "required": [],
             "add": [],
             "remove": []
         },
         "3": {
+            "required": [],
             "add": [],
             "remove": []
         },
         "4": {
+            "required": [],
             "add": [],
             "remove": []
         }

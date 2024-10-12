@@ -16,6 +16,7 @@ export interface IConfig {
     },
     ranks: {
         [iron: string]: {
+            required: string[],
             add: string[],
             remove: string[]
         }

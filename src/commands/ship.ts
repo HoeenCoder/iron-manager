@@ -22,7 +22,7 @@ const SHIP_POSTFIXES = [
     "of Twilight", "of Victory", "of Vigilance", "of War", "of Wrath"
 ];
 
-const PURGE_INTERVAL = 60000 * 0.5; // 10 minutes
+const PURGE_INTERVAL = 60000 * 10; // 10 minutes
 const INACTIVE_DESTROYER_CHANNELS: string[] = [];
 
 setInterval(async () => {
@@ -51,7 +51,7 @@ setInterval(async () => {
                 if (!channel.deletable) {
                     Logger.logError(`Unable to delete expired voice channel "${channel.name}" ID: ${channel.id}.`);
                 } else {
-                    await channel.delete();
+                    await channel.delete(`Super Destroyer VC removed due to inactivity.`);
                 }
             }
         } else {

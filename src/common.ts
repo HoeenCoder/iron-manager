@@ -10,6 +10,7 @@ export interface IConfig {
     report_channel_id: string,
     log_channel_id: string,
     thumbnail_icon_url: string,
+    voice_category_id: string,
     permissions: {
         "all": string[],
         [permissionKey: string]: string[]
@@ -45,15 +46,21 @@ reloadConfig();
  * @returns a boolean indicating if the action is permitted.
  */
 export function roleBasedPermissionCheck(permissionKey: string, member: Discord.GuildMember): boolean {
+    const allAccessRoles: string[] = Config.permissions['all'] || [];
+
     if (!(permissionKey in Config.permissions)) {
-        if (!Config.permissions['all'] || !Config.permissions['all'].length) {
+        if (!allAccessRoles || !allAccessRoles.length) {
             console.log(`Permissions not configred! Please configure permissions in config.json!`);
             return false; // Perms not configured
         }
         permissionKey = 'all'; // default to global permission
     }
 
-    const eligibleRoles = Config.permissions[permissionKey];
+    let eligibleRoles = Config.permissions[permissionKey];
+    if (permissionKey !== 'all') {
+        eligibleRoles = eligibleRoles.concat(allAccessRoles);
+    }
+
     const roles = member.roles.cache;
 
     for (const role of eligibleRoles) {
@@ -70,10 +77,12 @@ export function roleBasedPermissionCheck(permissionKey: string, member: Discord.
  * data: A Discord.SlashCommandBuilder object that has been used to build the command's data.
  * execute: The method that executes when the command is called. Provides the interaction that
  * triggerd the command as an argument.
+ * autocomplete: An optional method that executes to provide autocomplete options to the user.
  */
 export interface ICommand {
     data: Discord.SlashCommandOptionsOnlyBuilder;
-    execute: (interaction: Discord.ChatInputCommandInteraction) => void;
+    execute: (interaction: Discord.ChatInputCommandInteraction) => Promise<void>;
+    autocomplete?: (interaction: Discord.AutocompleteInteraction) => Promise<void>;
 }
 
 /**

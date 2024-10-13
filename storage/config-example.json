@@ -2,8 +2,10 @@
     "report_channel_id": "",
     "log_channel_id": "",
     "thumbnail_icon_url": "",
+    "voice_category_id": "",
     "permissions": {
         "all": [],
+        "deploy": [],
         "iron": []
     },
     "ranks": {

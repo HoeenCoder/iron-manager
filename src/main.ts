@@ -30,7 +30,9 @@ export const client = new Discord.Client({ intents: [
     Discord.GatewayIntentBits.GuildMessages,
     Discord.GatewayIntentBits.MessageContent,
     // allows the bot to manage member nicknames
-    Discord.GatewayIntentBits.GuildMembers
+    Discord.GatewayIntentBits.GuildMembers,
+    // allows the bot to see users in voice channels
+    Discord.GatewayIntentBits.GuildVoiceStates
 ]});
 
 // Load commands
@@ -55,6 +57,14 @@ for (const file of commandFiles) {
 // Load events
 const eventFiles = fs.readdirSync(`${__dirname}/events`).filter(f => f.endsWith('js'));
 for (const file of eventFiles) {
+    if (file === 'dev.js') {
+        if (!process.env.DEV_MODE) {
+            // Dev specific events we don't want loaded in production
+            continue;
+        } else {
+            console.log(`[NOTICE] Loading development events...`);
+        }
+    }
     const eventModule: {[key: string]: IEvent} = require(`${__dirname}/events/${file}`);
     for (let event of Object.values(eventModule)) {
         if (event.once) {

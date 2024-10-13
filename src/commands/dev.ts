@@ -7,7 +7,7 @@ const commands: {[key: string]: ICommand} = {
         data: new Discord.SlashCommandBuilder()
             .setName('resetiron')
             .setDescription('Reset the IRON distribution JSON file - DEV MODE ONLY COMMAND'),
-        execute(interaction) {
+        async execute(interaction) {
             if (!process.env.DEV_MODE) {
                 interaction.reply({content: `:x: Command only avaliable in development mode.`, ephemeral: true});
                 return;

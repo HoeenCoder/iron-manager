@@ -25,7 +25,7 @@ const commands: {[key: string]: ICommand} = {
 
             // 1. check permissions
             if (!(await roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember))) {
-                interaction.followUp({content: `:x: Access Denied`, ephemeral: true});
+                interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                 return;
             }
 
@@ -152,7 +152,7 @@ const commands: {[key: string]: ICommand} = {
 
             // check permissions
             if (!(await roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember))) {
-                interaction.followUp({content: `:x: Access Denied`, ephemeral: true});
+                interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                 return;
             }
 

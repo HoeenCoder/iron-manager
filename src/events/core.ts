@@ -13,27 +13,47 @@ const events: {[key: string]: IEvent} = {
     commandReceived: {
         name: Discord.Events.InteractionCreate,
         async execute(interaction: Discord.Interaction) {
-            if (!interaction.isChatInputCommand()) return;
+            if (interaction.isChatInputCommand()) {
+                const command = commands.get(interaction.commandName);
+                if (!command) {
+                    await interaction.reply({content: ':x: Command not found.', ephemeral: true});
+                    Logger.logError(`Non-existant command called: ${interaction.commandName}`);
+                    return;
+                }
 
-            const command = commands.get(interaction.commandName);
-            if (!command) {
-                await interaction.reply({content: ':x: Command not found.', ephemeral: true});
-                Logger.logError(`Non-existant command called: ${interaction.commandName}`);
-                return;
-            }
+                try {
+                    await command.execute(interaction);
+                } catch (e) {
+                    Logger.logError(e as Error);
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
+                            ephemeral: true});
+                    } else {
+                        await interaction.reply({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
+                            ephemeral: true});
+                    }
+                }
+            } else if (interaction.isAutocomplete()) {
+                const command = commands.get(interaction.commandName);
+                if (!command) {
+                    Logger.logError(`Autocomplete event called for non-existant command: ${interaction.commandName}`);
+                    return;
+                }
 
-            try {
-                await command.execute(interaction);
-            } catch (e) {
-                Logger.logError(e as Error);
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
-                        ephemeral: true});
-                } else {
-                    await interaction.reply({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
-                        ephemeral: true});
+                if (!command.autocomplete) {
+                    Logger.logError(`Autocomplete event called for command that lacks autocomplete support. ` +
+                        `If this is always a bug, please make this message an error. Aborting`);
+                    return;
+                }
+
+                try {
+                    await command.autocomplete(interaction);
+                } catch (e) {
+                    Logger.logError(e as Error);
                 }
             }
+
+            // All other types ignored
         }
     }
 };

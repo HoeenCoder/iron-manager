@@ -1,4 +1,4 @@
-import { IEvent, commands, getGuild } from '../common';
+import { IEvent, commandRegistry, componentRegistry } from '../common';
 import * as Discord from 'discord.js';
 import * as Logger from '../logger';
 
@@ -10,51 +10,83 @@ const events: {[key: string]: IEvent} = {
             console.log(`Logged in as ${client.user?.tag}.`);
         }
     },
-    commandReceived: {
+    command: {
         name: Discord.Events.InteractionCreate,
         async execute(interaction: Discord.Interaction) {
-            if (interaction.isChatInputCommand()) {
-                const command = commands.get(interaction.commandName);
-                if (!command) {
-                    await interaction.reply({content: ':x: Command not found.', ephemeral: true});
-                    Logger.logError(`Non-existant command called: ${interaction.commandName}`);
-                    return;
-                }
+            if (!interaction.isChatInputCommand()) return;
 
-                try {
-                    await command.execute(interaction);
-                } catch (e) {
-                    Logger.logError(e as Error);
-                    if (interaction.replied || interaction.deferred) {
-                        await interaction.followUp({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
-                            ephemeral: true});
-                    } else {
-                        await interaction.reply({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
-                            ephemeral: true});
-                    }
-                }
-            } else if (interaction.isAutocomplete()) {
-                const command = commands.get(interaction.commandName);
-                if (!command) {
-                    Logger.logError(`Autocomplete event called for non-existant command: ${interaction.commandName}`);
-                    return;
-                }
-
-                if (!command.autocomplete) {
-                    Logger.logError(`Autocomplete event called for command that lacks autocomplete support. ` +
-                        `If this is always a bug, please make this message an error. Aborting`);
-                    return;
-                }
-
-                try {
-                    await command.autocomplete(interaction);
-                } catch (e) {
-                    Logger.logError(e as Error);
-                }
+            const command = commandRegistry.get(interaction.commandName);
+            if (!command) {
+                await interaction.reply({content: ':x: Command not found.', ephemeral: true});
+                Logger.logError(`Non-existant command called: ${interaction.commandName}`);
+                return;
             }
 
-            // All other types ignored
+            try {
+                await command.execute(interaction);
+            } catch (e) {
+                Logger.logError(e as Error);
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
+                        ephemeral: true});
+                } else {
+                    await interaction.reply({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
+                        ephemeral: true});
+                }
+            }
         }
+    },
+    autocomplete: {
+        name: Discord.Events.InteractionCreate,
+        async execute(interaction: Discord.Interaction) {
+            if (!interaction.isAutocomplete()) return;
+
+            const command = commandRegistry.get(interaction.commandName);
+            if (!command) {
+                Logger.logError(`Autocomplete event called for non-existant command: ${interaction.commandName}`);
+                return;
+            }
+
+            if (!command.autocomplete) {
+                Logger.logError(`Autocomplete event called for command that lacks autocomplete support. ` +
+                    `If this is always a bug, please make this message an error. Aborting`);
+                return;
+            }
+
+            try {
+                await command.autocomplete(interaction);
+            } catch (e) {
+                Logger.logError(e as Error);
+            }
+        },
+    },
+    // Buttons, string select menu changes
+    componentInteract: {
+        name: Discord.Events.InteractionCreate,
+        async execute(interaction: Discord.Interaction) {
+            if (!interaction.isButton() &&
+                !interaction.isStringSelectMenu() &&
+                !interaction.isModalSubmit()) return;
+
+            const component = componentRegistry.get(interaction.customId);
+            if (!component) {
+                // Not all components have listeners, ignore.
+                return;
+            }
+
+            try {
+                await component.execute(interaction);
+            } catch (e) {
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({content: `:x: An error occured while processing your request, this has been logged and will be fixed later.`,
+                        ephemeral: true});
+                } else {
+                    await interaction.reply({content: `:x: An error occured while processing your request, this has been logged and will be fixed later.`,
+                        ephemeral: true});
+                }
+                Logger.logError(e as Error);
+            }
+        },
     }
 };
 

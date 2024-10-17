@@ -4,9 +4,9 @@ import * as Logger from './../logger';
 import { distributeIron, IronDistributionResults } from './../iron-manager';
 
 const commands: {[key: string]: ICommand} = {
-    addiron: {
+    'add-iron': {
         data: new Discord.SlashCommandBuilder()
-            .setName('addiron')
+            .setName('add-iron')
             .setDescription('Distributes IRON to the provided users either for attending a deployment or being commended.')
             .addStringOption(o =>
                 o.setName('type')
@@ -51,8 +51,13 @@ const commands: {[key: string]: ICommand} = {
 
             const members: Discord.GuildMember[] = [];
             for (const id of matches) {
-                const member = await guild.members.fetch(id);
-                if (!member) continue;
+                let member: Discord.GuildMember;
+                try {
+                    member = await guild.members.fetch(id);
+                } catch (e) {
+                    // Can't find member, skip
+                    continue;
+                }
                 members.push(member);
             }
 

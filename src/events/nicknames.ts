@@ -1,4 +1,4 @@
-import { IEvent, commands, getGuild } from '../common';
+import { IEvent } from '../common';
 import * as Discord from 'discord.js';
 import * as Logger from '../logger';
 import { Config } from '../common';
@@ -7,7 +7,7 @@ import { recentlyUpdatedNames } from '../iron-manager';
 const events: {[key: string]: IEvent} = {
     nickname_monitor: {
         name: Discord.Events.GuildMemberUpdate,
-        execute(oldMember: Discord.GuildMember, newMember: Discord.GuildMember) {
+        execute(oldMember: Discord.PartialGuildMember, newMember: Discord.GuildMember) {
             if (oldMember.displayName === newMember.displayName) return;
 
             // Ignore newly added members

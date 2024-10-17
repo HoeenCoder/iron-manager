@@ -19,7 +19,7 @@ for (const key of enviromentVariables) {
 
 import * as Discord from 'discord.js';
 import fs = require('fs');
-import { ICommand, IEvent, commands } from './common';
+import { ICommand, IEvent, commandRegistry, componentRegistry } from './common';
 import * as Logger from './logger';
 
 // Initialize client
@@ -49,8 +49,16 @@ for (const file of commandFiles) {
     }
     const commandModule: {[key: string]: ICommand} = require(`${__dirname}/commands/${file}`);
     for (let c in commandModule) {
-        commands.set(c, commandModule[c]);
-        commandData.push(commandModule[c].data.toJSON());
+        const command = commandModule[c];
+        commandRegistry.set(c, command);
+
+        if (command.components) {
+            for (const id in command.components) {
+                componentRegistry.set(id, command.components[id]);
+            }
+        }
+
+        commandData.push(command.data.toJSON());
     }
 }
 

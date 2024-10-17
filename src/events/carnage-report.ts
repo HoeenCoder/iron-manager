@@ -19,8 +19,13 @@ const events: {[key: string]: IEvent} = {
             // 2. Prepare
             const members: Discord.GuildMember[] = [];
             for (const id of matches) {
-                const member = await guild.members.fetch(id);
-                if (!member) continue;
+                let member: Discord.GuildMember;
+                try {
+                    member = await guild.members.fetch(id);
+                } catch (e) {
+                    // Can't find member, skip
+                    continue;
+                }
                 members.push(member);
             }
 

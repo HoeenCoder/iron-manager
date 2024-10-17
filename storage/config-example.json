@@ -3,12 +3,28 @@
     "log_channel_id": "",
     "thumbnail_icon_url": "",
     "voice_category_id": "",
+    "onboarding_channel_id": "",
     "permissions": {
         "all": [],
         "deploy": [],
-        "iron": []
+        "iron": [],
+        "onboard": []
+    },
+    "onboardingRoles": {
+        "steam": "",
+        "playstation": "",
+        "northAmerica": "",
+        "southAmerica": "",
+        "europe": "",
+        "oceania": "",
+        "asia": ""
     },
     "ranks": {
+        "0": {
+            "required": [],
+            "add": [],
+            "remove": []
+        },
         "1": {
             "required": [],
             "add": [],

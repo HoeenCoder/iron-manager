@@ -131,7 +131,7 @@ function parseUsername(username: string): [number, string] | null {
     return [numeral, matches[2]];
 }
 
-function createUsername(iron: number, name: string): string {
+export function createUsername(iron: number, name: string): string {
     // 17, "Example Name" -> "[ XVII ] Example Name"
     if (iron < 0) {
         throw new Error(`IRON count when assembling username was negative. name: ${name}, iron: ${iron}`);
@@ -162,13 +162,13 @@ function createUsername(iron: number, name: string): string {
 /**
  * See if a member who just received iron should be promoted and if so promote them.
  * @param member Guild member to check a promotion for
- * @param iron Member's new iron count
+ * @param ironCount Member's new iron count
  * @returns true if an error occurs, false if not.
  */
-async function tryPromotion(member: Discord.GuildMember, iron: string): Promise<boolean> {
+export async function tryPromotion(member: Discord.GuildMember, ironCount: string): Promise<boolean> {
     // 1. Check to see if theres a promotion to perform
-    if (!Object.keys(Config.ranks).includes(iron)) return false; // No promotion at this iron count
-    const rank = Config.ranks[iron];
+    if (!Object.keys(Config.ranks).includes(ironCount)) return false; // No promotion at this iron count
+    const rank = Config.ranks[ironCount];
 
     // 2. Validate the user has the required role(s)
     if (!member.roles.cache.hasAll(...rank.required)) {

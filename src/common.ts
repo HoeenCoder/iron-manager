@@ -11,9 +11,13 @@ export interface IConfig {
     log_channel_id: string,
     thumbnail_icon_url: string,
     voice_category_id: string,
+    onboarding_channel_id: string,
     permissions: {
         "all": string[],
         [permissionKey: string]: string[]
+    },
+    onboardingRoles: {
+        [key: string]: string
     },
     ranks: {
         [iron: string]: {
@@ -73,25 +77,47 @@ export function roleBasedPermissionCheck(permissionKey: string, member: Discord.
 }
 
 /**
+ * Component Interface - Represents a component's (button or string select menu) response method.
+ * Not every component is required to have an IComponent to handle it. This is because we don't
+ * always want to respond to every string select menu change.
+ *
+ * execute: The method that executes when the user clicks the button or changes the selection in
+ *      the string select menu.
+ */
+export interface IComponent {
+    execute: (interaction: Discord.ButtonInteraction | Discord.StringSelectMenuInteraction | Discord.ModalSubmitInteraction) => Promise<void>;
+}
+
+/**
+ * All components are internally registered here.
+ */
+export const componentRegistry = new Discord.Collection<string, IComponent>();
+
+/**
  * Command Interface - Represents a command's data and response method.
+ *
  * data: A Discord.SlashCommandBuilder object that has been used to build the command's data.
  * execute: The method that executes when the command is called. Provides the interaction that
  * triggerd the command as an argument.
  * autocomplete: An optional method that executes to provide autocomplete options to the user.
+ * components: An object with keys being custom IDs and values being IComponents. The customId key MUST
+ *      match the button/select menu's custom ID.
  */
 export interface ICommand {
     data: Discord.SlashCommandOptionsOnlyBuilder;
     execute: (interaction: Discord.ChatInputCommandInteraction) => Promise<void>;
     autocomplete?: (interaction: Discord.AutocompleteInteraction) => Promise<void>;
+    components?: {[customId: string]: IComponent}
 }
 
 /**
  * All commands are internally registered here.
  */
-export const commands = new Discord.Collection<string, ICommand>();
+export const commandRegistry = new Discord.Collection<string, ICommand>();
 
 /**
  * Event Interface - Represents an event listener's data and response method.
+ *
  * name: The name of the event from Discord.Events excluding VoiceServerUpdate and Raw.
  * once: true or excluded value, register as a one-time event (true) or repeat event (excluded).
  * execute: The method that executes when the event is triggered. Can take 0 or more arguments of any types.

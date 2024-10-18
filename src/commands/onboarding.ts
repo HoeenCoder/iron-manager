@@ -455,6 +455,7 @@ const commands: {[key: string]: ICommand} = {
                             await interaction.followUp(`Reject applicant <@${applicant.id}> would be kicked, but development mode is enabled which disables this feature.`);
                         } else {
                             await applicant.kick(`Application rejected by ${interaction.user.displayName}, reason: ${reason}`);
+                            await interaction.followUp(`Application rejected, applicant kicked.`);
                         }
                     } else {
                         await interaction.followUp(`Attempted to kick rejected applicant <@${applicant.id}>, but could not. Please manually remove them from the server.`);
@@ -501,7 +502,7 @@ const commands: {[key: string]: ICommand} = {
         data: new Discord.SlashCommandBuilder()
             .setName('welcome')
             .setDescription('Posts the welcome and introductory message shown to new members.')
-            .addUserOption(o => 
+            .addUserOption(o =>
                 o.setName('member')
                     .setDescription('The new member to mention in the message.')
                     .setRequired(true)),

@@ -119,14 +119,15 @@ export function writeIron(members: string[], type: IronAchivementType, verificat
 
 // Other logging
 
-export function logError(e: string | Error) {
-    if ((e as Error).message) {
-        e = `${(e as Error).message}\n${(e as Error).stack}`;
+export function logError(e: any) {
+    let errorText = e;
+    if (e instanceof Error) {
+        errorText = `${(e as Error).message}\n${(e as Error).stack}`;
     }
 
-    console.error(`[ERROR] ${e}`);
+    console.error(e);
     const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS);
-    fs.appendFileSync(`${__dirname}/../storage/${getFileName('errors')}.log`, `${timestamp}: ${e}\n\n`, {encoding: 'utf-8'});
+    fs.appendFileSync(`${__dirname}/../storage/${getFileName('errors')}.log`, `${timestamp}: ${errorText}\n\n`, {encoding: 'utf-8'});
 }
 
 export async function logToChannel(msg: string) {

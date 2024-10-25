@@ -182,7 +182,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                         return;
                     }
 
@@ -199,7 +199,7 @@ const commands: {[key: string]: ICommand} = {
                     try {
                         applicant = await guild.members.fetch(userId);
                     } catch (e) {
-                        await interaction.reply({
+                        await interaction.followUp({
                             content: `Could not find applicant to approve, did they leave the server?\n\n` +
                                 `You can delete this application with the "Delete Application" button.`,
                             ephemeral: true
@@ -209,7 +209,7 @@ const commands: {[key: string]: ICommand} = {
 
                     // Ensure applicant wasn't already approved/rejected.
                     if (!applicant.roles.cache.hasAny(...Config.ranks['0'].required)) {
-                        await interaction.reply({
+                        await interaction.followUp({
                             content: `Applicant does not have the role(s) new recruits have, maybe they were already approved or rejected?\n\n` +
                                 `You can delete this application with the "Delete Application" button.`,
                             ephemeral: true,
@@ -307,7 +307,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     // Update embed, post new message if needed
-                    interaction.editReply({
+                    await interaction.editReply({
                         embeds: [appEmbed],
                         components: []
                     });
@@ -420,12 +420,17 @@ const commands: {[key: string]: ICommand} = {
                     }
                     const reason = interaction.fields.getTextInputValue('onboarding-rejection-reason') || 'No reason provided';
 
-                    await applicant.send({
-                        content: `Your application to the 1st Colonial Regiment was rejected for the following reasons:\n\n` +
-                            `> ${reason}\n\n` +
-                            `If your looking for others to play with, consider checking out the liberty nexus instead: https://discord.gg/EHdedDkzyu.\n\n` +
-                            `*I am a bot and i do not respond to messages.*`
-                    });
+                    try {
+                        await applicant.send({
+                            content: `Your application to the 1st Colonial Regiment was rejected for the following reasons:\n\n` +
+                                `> ${reason}\n\n` +
+                                `If your looking for others to play with, consider checking out the liberty nexus instead: https://discord.gg/EHdedDkzyu.\n\n` +
+                                `*I am a bot and i do not respond to messages.*`
+                        });
+                    } catch (e) {
+                        // User has DMs blocked, cannot notify them.
+                        await interaction.followUp(`Applicant has DMs blocked, unable to notify them of their rejection and reason.`);
+                    }
 
                     if (interaction.channel) {
                         const applicationMessage = await interaction.channel.messages.fetch(rejectionRecord[1]);
@@ -502,9 +507,9 @@ const commands: {[key: string]: ICommand} = {
         data: new Discord.SlashCommandBuilder()
             .setName('welcome')
             .setDescription('Posts the welcome and introductory message shown to new members.')
-            .addUserOption(o =>
-                o.setName('member')
-                    .setDescription('The new member to mention in the message.')
+            .addStringOption(o =>
+                o.setName('members')
+                    .setDescription('The mention(s) (@s) new member(s) to mention in the message.')
                     .setRequired(true)),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
@@ -512,12 +517,17 @@ const commands: {[key: string]: ICommand} = {
                 return;
             }
 
-            const applicant = interaction.options.getUser('member', true);
+            const input = interaction.options.getString('members', true);
+            const matches = [...(input || '').matchAll(/<@([0-9]+)>/g)].map(v => v[1]);
+            if (!input || !matches || !matches.length) {
+                interaction.followUp({content: `:x: No members provided.`, ephemeral: true});
+                return;
+            }
 
             await interaction.reply({
-                content: `Welcome <@${applicant.id}> to the 1st Colonial Regiment!\n\n` +
+                content: `Welcome ${matches.map(id => `<@${id}>`).join(', ')} to the 1st Colonial Regiment!\n\n` +
                     `You can find an overview of how things work in <#1228740800565743646>. ` +
-                    `We host MODs multiple times a week, you can find the schedule for the next one(s) in <#1227485860983865374> and <#1241770340011606096>. ` +
+                    `We host MODs multiple times a week, you can find the schedule for the next one(s) in <#1227485860983865374>, <#1241770340011606096>, and <#1298043403854155858>. ` +
                     `Play in MODs to earn IRON (the number next to your name), you can earn 1 IRON per week from playing in MODs.\n\n` +
                     `You are also welcomed and encouraged to dive with others whenever you like. You can ping the ON CALL role in <#1289960010801221692>. ` +
                     `If you want that role yourself, get it from <#1244035446439280711>.\n\n` +

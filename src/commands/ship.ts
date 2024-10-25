@@ -22,8 +22,10 @@ const SHIP_POSTFIXES = [
     "of Twilight", "of Victory", "of Vigilance", "of War", "of Wrath"
 ];
 
-const PURGE_INTERVAL = 60000 * 10; // 10 minutes
+const PURGE_INTERVAL = 60000 * 5; // 5 minutes
 const INACTIVE_DESTROYER_CHANNELS: string[] = [];
+// {channelId: userId}
+const CHANNEL_OWNERS: {[channelId: string]: string} = {};
 
 setInterval(async () => {
     const guild = await getGuild();
@@ -51,6 +53,7 @@ setInterval(async () => {
                 if (!channel.deletable) {
                     Logger.logError(`Unable to delete expired voice channel "${channel.name}" ID: ${channel.id}.`);
                 } else {
+                    delete CHANNEL_OWNERS[channel.id];
                     await channel.delete(`Super Destroyer VC removed due to inactivity.`);
                 }
             }
@@ -83,13 +86,13 @@ const commands: {[key: string]: ICommand} = {
         async execute(interaction) {
             await interaction.deferReply({ephemeral: true});
 
-            // 0. Permissions check
-            if (!(await roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember))) {
-                interaction.followUp({content: `:x: Access Denied. Requires Deployment Officer permissions.`, ephemeral: true});
+            // 1. Validation
+            const ownerIds = Object.values(CHANNEL_OWNERS);
+            if (ownerIds.includes(interaction.user.id) && !roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                await interaction.followUp({content: `:x: You already have a super destroy VC, please use that or wait for it to expire before making a new one.`});
                 return;
             }
 
-            // 1. Validation
             const prefix = interaction.options.getString('prefix') || '';
             const postfix = interaction.options.getString('postfix') || '';
 
@@ -115,6 +118,8 @@ const commands: {[key: string]: ICommand} = {
                 reason: `Super Destroyer VC deployed upon request of ${(interaction.member as Discord.GuildMember).displayName}`,
                 type: Discord.ChannelType.GuildVoice
             });
+
+            CHANNEL_OWNERS[shipChannel.id] = interaction.user.id;
 
             const intervalMinutes = PURGE_INTERVAL / 60000;
             const embed = new Discord.EmbedBuilder()

@@ -1,6 +1,6 @@
 {
   "name": "iron-manager",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Bot for distributing and managing IRON for the 1st Colonial Helldiver Regiment",
   "main": "start",
   "scripts": {

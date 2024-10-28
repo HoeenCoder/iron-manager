@@ -1,6 +1,6 @@
 import * as Discord from "discord.js";
 import { ICommand } from "../common";
-import * as Logger from './../logger';
+import { IronLogger } from './../logger';
 
 const commands: {[key: string]: ICommand} = {
     resetiron: {
@@ -14,7 +14,7 @@ const commands: {[key: string]: ICommand} = {
                 return;
             }
 
-            Logger.resetJSON();
+            IronLogger.resetJSON();
             interaction.reply({content: 'IRON JSON reset.', ephemeral: true});
         }
     }

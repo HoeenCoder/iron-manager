@@ -1,7 +1,7 @@
 import { IEvent, Config, getGuild } from '../common';
 import * as Discord from 'discord.js';
 import { distributeIron, IronDistributionResults } from '../iron-manager';
-import * as Logger from '../logger';
+import { Logger } from '../logger';
 
 const events: {[key: string]: IEvent} = {
     watchForReport: {

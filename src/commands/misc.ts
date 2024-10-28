@@ -1,6 +1,6 @@
 import * as Discord from "discord.js";
 import { ICommand, getGuild, Config } from "../common";
-import * as Logger from './../logger';
+import { IronLogger } from './../logger';
 import * as Luxon from 'luxon';
 
 const commands: {[key: string]: ICommand} = {
@@ -24,7 +24,7 @@ const commands: {[key: string]: ICommand} = {
 
         async execute(interaction) {
             const share = !!interaction.options.getBoolean('broadcast');
-            const weekStart = Logger.getCurrentWeekTimestamp();
+            const weekStart = IronLogger.getCurrentWeekTimestamp();
             const weekEnd = Luxon.DateTime.fromMillis(weekStart).plus({days: 7}).minus({seconds: 1}).toMillis();
 
             const embed = new Discord.EmbedBuilder()
@@ -70,7 +70,7 @@ const commands: {[key: string]: ICommand} = {
                 return;
             }
 
-            const records = Logger.readIron(member.id, Logger.getCurrentWeekTimestamp());
+            const records = IronLogger.readIron(member.id, IronLogger.getCurrentWeekTimestamp());
 
             const embed = new Discord.EmbedBuilder()
                 .setColor(0x3b4d33)

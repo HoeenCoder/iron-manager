@@ -1,6 +1,6 @@
 import { IEvent, commandRegistry, componentRegistry } from '../common';
 import * as Discord from 'discord.js';
-import * as Logger from '../logger';
+import { Logger } from '../logger';
 
 const events: {[key: string]: IEvent} = {
     clientReady: {

@@ -1,6 +1,6 @@
 import { IEvent } from '../common';
 import * as Discord from 'discord.js';
-import * as Logger from '../logger';
+import { Logger } from '../logger';
 import { Config } from '../common';
 import { recentlyUpdatedNames } from '../iron-manager';
 

@@ -1,6 +1,6 @@
 import * as Discord from "discord.js";
 import { ICommand, roleBasedPermissionCheck, Config, getGuild } from "../common";
-import * as Logger from '../logger';
+import { Logger } from '../logger';
 import { createUsername, tryPromotion } from "../iron-manager";
 
 // rejectorId -> [rejecteeId, applicationMessageId]

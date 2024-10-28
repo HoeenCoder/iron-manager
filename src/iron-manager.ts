@@ -3,7 +3,7 @@
  */
 import RomanNumerals = require('roman-numerals');
 import * as Discord from 'discord.js';
-import * as Logger from './logger';
+import { IronLogger } from './logger';
 import { Config } from './common';
 
 export interface IronDistributionResults {
@@ -17,8 +17,8 @@ export interface IronDistributionResults {
 
 export let recentlyUpdatedNames: string[] = [];
 
-export async function distributeIron(members: Discord.GuildMember[], type: Logger.IronAchivementType): Promise<IronDistributionResults | Error> {
-    const verificationTimestamp = Logger.getCurrentWeekTimestamp();
+export async function distributeIron(members: Discord.GuildMember[], type: IronLogger.IronAchivementType): Promise<IronDistributionResults | Error> {
+    const verificationTimestamp = IronLogger.getCurrentWeekTimestamp();
     const completedIDs: string[] = [];
     const results: IronDistributionResults = {
         issued: [],
@@ -36,9 +36,9 @@ export async function distributeIron(members: Discord.GuildMember[], type: Logge
             continue;
         }
 
-        let data: Logger.MemberWeeklyIronLog;
+        let data: IronLogger.MemberWeeklyIronLog;
         try {
-            data = Logger.readIron(member.id, verificationTimestamp);
+            data = IronLogger.readIron(member.id, verificationTimestamp);
         } catch (e) {
             // Weekly tick likely occured mid-update, terminate early.
             if (!(e as Error).name || !(e as Error).message) {
@@ -66,7 +66,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: Logge
     }
 
     try {
-        Logger.writeIron(attemptToIssue.map(m => m.id), type, verificationTimestamp);
+        IronLogger.writeIron(attemptToIssue.map(m => m.id), type, verificationTimestamp);
     } catch (e) {
         // Weekly tick likely occured mid-update, terminate early.
         if (!(e as Error).name || !(e as Error).message) {

@@ -1,6 +1,6 @@
 import * as Discord from "discord.js";
 import { getGuild, ICommand, roleBasedPermissionCheck, Config } from "../common";
-import * as Logger from '../logger';
+import { Logger } from '../logger';
 
 const SHIP_PREFIXES = [
     "Adjudicator", "Advocate", "Aegis", "Agent", "Arbiter", "Banner", "Beacon", "Blade", "Bringer", "Champion", "Citizen", "Claw", "Colossus",

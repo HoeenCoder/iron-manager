@@ -20,7 +20,7 @@ for (const key of enviromentVariables) {
 import * as Discord from 'discord.js';
 import fs = require('fs');
 import { ICommand, IEvent, commandRegistry, componentRegistry } from './common';
-import * as Logger from './logger';
+import { Logger } from './logger';
 
 // Initialize client
 export const client = new Discord.Client({ intents: [

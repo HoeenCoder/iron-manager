@@ -1,6 +1,6 @@
 import * as Discord from "discord.js";
 import { getGuild, ICommand, roleBasedPermissionCheck, Config } from "../common";
-import * as Logger from './../logger';
+import { Logger, IronLogger } from './../logger';
 import { distributeIron, IronDistributionResults } from './../iron-manager';
 
 const commands: {[key: string]: ICommand} = {
@@ -32,7 +32,7 @@ const commands: {[key: string]: ICommand} = {
 
             // 2. validate arguments
             // Should be enforced by discord, verify it actually was
-            const type: Logger.IronAchivementType = interaction.options.getString('type') as Logger.IronAchivementType;
+            const type: IronLogger.IronAchivementType = interaction.options.getString('type') as IronLogger.IronAchivementType;
             if (!['deployment', 'commendation'].includes(type)) {
                 interaction.followUp({content: `:x: Type must be "deployment" or "commendation".`, ephemeral: true});
                 return;

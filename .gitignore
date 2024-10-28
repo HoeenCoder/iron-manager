@@ -3,3 +3,5 @@ dist
 .env
 node_modules
 storage
+src/commands/private.ts
+src/events/private.ts

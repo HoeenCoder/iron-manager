@@ -19,7 +19,8 @@ const commands: {[key: string]: ICommand} = {
             .addStringOption(o =>
                 o.setName('members')
                     .setDescription('The mentions (@s) of the members to award IRON to.')
-                    .setRequired(true)),
+                    .setRequired(true))
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             await interaction.deferReply({ephemeral: true});
 
@@ -148,8 +149,8 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Print an explanation of the IRON distribution report.')
             .addBooleanOption(o =>
                 o.setName('broadcast')
-                    .setDescription('Share the results of this command with everyone?')
-            ),
+                    .setDescription('Share the results of this command with everyone?'))
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
 
         async execute(interaction) {
             const share = !!interaction.options.getBoolean('broadcast');

@@ -10,7 +10,8 @@ const commands: {[key: string]: ICommand} = {
     'post-onboarding-message': {
         data: new Discord.SlashCommandBuilder()
             .setName('post-onboarding-message')
-            .setDescription('Display the message and button to open the onboarding popup. Must be High Command.'),
+            .setDescription('Display the message and button to open the onboarding popup. Must be High Command.')
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.Administrator),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
                 interaction.reply({content: `:x: Access Denied. Requires High Command permissions.`, ephemeral: true});
@@ -395,7 +396,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                         return;
                     }
 
@@ -510,7 +511,8 @@ const commands: {[key: string]: ICommand} = {
             .addStringOption(o =>
                 o.setName('members')
                     .setDescription('The mention(s) (@s) new member(s) to mention in the message.')
-                    .setRequired(true)),
+                    .setRequired(true))
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                 interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});

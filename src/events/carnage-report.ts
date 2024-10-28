@@ -31,14 +31,6 @@ const events: {[key: string]: IEvent} = {
 
             // 3. Distribute
             let report = await distributeIron(members, 'deployment');
-            if (report instanceof Error) {
-                // Its possible that the report was processed mid weekly tick, try again
-                report = await distributeIron(members, 'deployment');
-                if (report instanceof Error) {
-                    // Ok now its clearly a problem, let a dev handle it.
-                    throw report;
-                }
-            }
 
             // 4. Report
             const author = await guild.members.fetch(message.author.id);

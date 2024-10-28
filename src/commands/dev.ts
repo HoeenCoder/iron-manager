@@ -13,9 +13,12 @@ const commands: {[key: string]: ICommand} = {
                 interaction.reply({content: `:x: Command only avaliable in development mode.`, ephemeral: true});
                 return;
             }
+            interaction.deferReply({ephemeral: true});
 
-            IronLogger.resetJSON();
-            interaction.reply({content: 'IRON JSON reset.', ephemeral: true});
+            const key = await IronLogger.transactionManager.lock();
+            await IronLogger.transactionManager.resetIron(key);
+            await IronLogger.transactionManager.unlock(key);
+            interaction.followUp({content: 'IRON JSON reset.', ephemeral: true});
         }
     }
 };

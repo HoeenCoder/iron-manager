@@ -17,8 +17,8 @@ export interface IronDistributionResults {
 
 export let recentlyUpdatedNames: string[] = [];
 
-export async function distributeIron(members: Discord.GuildMember[], type: IronLogger.IronAchivementType): Promise<IronDistributionResults | Error> {
-    const verificationTimestamp = IronLogger.getCurrentWeekTimestamp();
+export async function distributeIron(members: Discord.GuildMember[], type: IronLogger.IronAchivementType): Promise<IronDistributionResults> {
+    const key = await IronLogger.transactionManager.lock();
     const completedIDs: string[] = [];
     const results: IronDistributionResults = {
         issued: [],
@@ -36,18 +36,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             continue;
         }
 
-        let data: IronLogger.MemberWeeklyIronLog;
-        try {
-            data = IronLogger.readIron(member.id, verificationTimestamp);
-        } catch (e) {
-            // Weekly tick likely occured mid-update, terminate early.
-            if (!(e as Error).name || !(e as Error).message) {
-                // ??!
-                throw e;
-            }
-            return (e as Error);
-        }
-
+        const data = IronLogger.transactionManager.readIron(member.id, key);
         if (data[type]) {
             // Already got iron
             results.notIssued.push(member);
@@ -65,16 +54,9 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
         completedIDs.push(member.id);
     }
 
-    try {
-        IronLogger.writeIron(attemptToIssue.map(m => m.id), type, verificationTimestamp);
-    } catch (e) {
-        // Weekly tick likely occured mid-update, terminate early.
-        if (!(e as Error).name || !(e as Error).message) {
-            // ??!
-            throw e;
-        }
-        return (e as Error);
-    }
+    // Write data and end transaction
+    await IronLogger.transactionManager.writeIron(key, attemptToIssue.map(m => m.id), type);
+    await IronLogger.transactionManager.unlock(key);
 
     // Update usernames, ranks
     recentlyUpdatedNames = [];

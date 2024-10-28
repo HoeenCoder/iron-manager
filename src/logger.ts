@@ -2,6 +2,77 @@ import fs = require('fs');
 import Luxon = require('luxon');
 import { Config, getGuild, getFileName } from './common';
 import * as Discord from 'discord.js';
+import crypto = require('crypto');
+
+const LOCK_TIMEOUT = 1000 * 60; // 1 minute
+
+/**
+ * Prevents race conditions when accessing data
+ */
+abstract class Lock {
+    private locked: string = '';
+    private waiting: ((value: string) => void)[] = [];
+    private timeout: NodeJS.Timeout | null = null;
+
+    /**
+     * Locks the relevant data making all other requests wait for this one to finish.
+     * This method will return the transaction key when the data becomes avaliable.
+     * You MUST unlock the data with a call to unlock before the transaction times out.
+     * @returns Transaction key required for most actions on the data.
+     */
+    async lock(): Promise<string> {
+        if (this.locked) {
+            return new Promise<string>((resolver) => {
+                this.waiting.push(resolver);
+            });
+        } else {
+            this.locked = crypto.randomUUID();
+            this.timeout = setTimeout(async () => {
+                await this.unlock(this.locked);
+                throw new Error(`Transaction exceeded maximum time limit of ${LOCK_TIMEOUT / 1000} seconds.`);
+            }, LOCK_TIMEOUT);
+            return new Promise<string>((resolver) => {
+                resolver(this.locked);
+            });
+        }
+    }
+
+    /**
+     * Releases a transactional lock, requires the key created when locking the data.
+     * The key will be invalidated by this action, if you need to read or modify the data
+     * again, obtain a new lock.
+     * @param key Transaction key required for most actions on the data.
+     */
+    async unlock(key: string) {
+        this.tryKey(key);
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+
+        if (this.waiting.length) {
+            const resolver = this.waiting.shift() as ((value: string) => void);
+            this.locked = crypto.randomUUID();
+            this.timeout = setTimeout(async () => {
+                await this.unlock(this.locked);
+                throw new Error(`Transaction exceeded maximum time limit of ${LOCK_TIMEOUT / 1000} seconds.`);
+            }, LOCK_TIMEOUT);
+            resolver(this.locked);
+        } else {
+            this.locked = '';
+        }
+    }
+
+    /**
+     * Validate the provided transaction key. Throws an error if invalid, silently returns if valid.
+     * @param key Transaction key required for most actions on the data.
+     */
+    protected tryKey(key: string): void {
+        if (!this.locked || this.locked !== key) {
+            throw new Error(`Lock violation: ${this.locked ? 'bad key' : 'not locked'}.`);
+        }
+    }
+}
 
 /**
  * Manages IRON logging
@@ -21,115 +92,141 @@ export namespace IronLogger {
         }
     }
 
-    // on boot setup
-    const fileLoc = `${__dirname}/../storage/${getFileName('iron')}.json`;
-    let iron: IronJSON;
-    if (!fs.existsSync(fileLoc)) {
-        iron = {
-            weekTimestamp: calcCurWeekTimestamp(),
-            members: {}
-        };
+    class IronLock extends Lock {
+        private fileLoc: string;
+        private iron: IronJSON;
 
-        writeJSON();
-    } else {
-        iron = JSON.parse(fs.readFileSync(fileLoc, {encoding: 'utf-8'}));
-        validateData();
-    }
+        constructor() {
+            super();
+            this.fileLoc = `${__dirname}/../storage/${getFileName('iron')}.json`;
 
-    /**
-     * Checks if the stored data is still valid (a new week has not started).
-     * If it has, update it.
-     */
-    function validateData() {
-        let weekStart = calcCurWeekTimestamp();
-        if (iron.weekTimestamp === weekStart) {
-            // Week has not changed since last check
-            return;
+            if (!fs.existsSync(this.fileLoc)) {
+                this.iron = {
+                    weekTimestamp: this.calcCurWeekTimestamp(),
+                    members: {}
+                };
+
+                fs.writeFileSync(this.fileLoc, JSON.stringify(this.iron), {encoding: 'utf-8'});
+            } else {
+                this.iron = JSON.parse(fs.readFileSync(this.fileLoc, {encoding: 'utf-8'}));
+            }
         }
 
-        // Update timestamp, wipe values
-        iron.weekTimestamp = weekStart;
-        iron.members = {};
-
-        writeJSON();
-        console.log(`[NOTICE] New week detected, iron reset.`);
-    }
-
-    /**
-     * Gets the timestamp for when this week started.
-     * @returns The most recent Tuesday at 12:00 AM UTC as a millisecond timestamp
-     */
-    function calcCurWeekTimestamp(): number {
-        let now = Luxon.DateTime.utc().startOf('day');
-        if (now.weekday === 1) {
-            now = now.minus({ days: 1});
+        /**
+         * Overriden version of Lock's lock method to insert data validation when a transaction starts.
+         * Obtains the key first (super.lock()) THEN validates and returns it.
+         * @returns Transaction key required for most actions on the data.
+         */
+        async lock(): Promise<string> {
+            const key = await super.lock();
+            this.validateData(key);
+            return key;
         }
 
-        return now.set({weekday: 2}).toMillis();
-    }
+        /**
+         * Internal method that handles the deployment week changing.
+         * @param key The transaction key to ensure the method caller holds the lock for this data.
+         */
+        private validateData(key: string): void {
+            this.tryKey(key);
 
-    /**
-     * Writes changes to JSON
-     */
-    function writeJSON() {
-        fs.writeFileSync(fileLoc, JSON.stringify(iron), {encoding: 'utf-8'});
-    }
+            let weekStart = this.calcCurWeekTimestamp();
+            if (this.iron.weekTimestamp === weekStart) {
+                // Week has not changed since last check
+                return;
+            }
 
-    /**
-     * Gets the timestamp for the start of the current week
-     * @returns the timestamp in milliseconds since 1/1/1970 @ 12:00 AM UTC
-     */
-    export function getCurrentWeekTimestamp(): number {
-        validateData();
-        return iron.weekTimestamp;
-    }
+            // Update timestamp, wipe values
+            this.iron.weekTimestamp = weekStart;
+            this.iron.members = {};
 
-    /**
-     * Gets IRON data for a specific member.
-     * Data indicates if the member has earned iron via deployment and/or commendation this week.
-     * @param memberID Discord snowflake user ID
-     * @param verificationTimestamp Timestamp for the start of the week obtained from getCurrentWeekTimestamp. Used to ensure data integrity.
-     * @returns The member's iron data
-     */
-    export function readIron(memberID: string, verificationTimestamp: number): MemberWeeklyIronLog {
-        validateData();
-        if (iron.weekTimestamp !== verificationTimestamp) {
-            throw new Error(`Invalid verification timestamp! IRON Data has likely changed!`);
+            this.writeJSON();
+            console.log(`[NOTICE] New week detected, iron reset.`);
         }
 
-        return iron.members[memberID] || {};
-    }
+        /**
+         * Internal method to calculate the current week's weekly timestamp.
+         * @returns The unix timestamp representing the start of the current deployment week.
+         */
+        private calcCurWeekTimestamp(): number {
+            let now = Luxon.DateTime.utc().startOf('day');
+            if (now.weekday === 1) {
+                now = now.minus({ days: 1});
+            }
 
-    /**
-     * Writes IRON data for a set of members as a batch.
-     * Data indicates if the member has earned iron via deployment and/or commendation this week.
-     * @param members Array of Discord snowflake user IDs
-     * @param type The type of deployment to mark this user as having taken part in.
-     * @param verificationTimestamp Timestamp for the start of the week obtained from getCurrentWeekTimestamp. Used to ensure data integrity.
-     */
-    export function writeIron(members: string[], type: IronAchivementType, verificationTimestamp: number) {
-        validateData();
-        if (iron.weekTimestamp !== verificationTimestamp) {
-            throw new Error(`Invalid verification timestamp! IRON Data has likely changed!`);
+            return now.set({weekday: 2}).toMillis();
         }
 
-        for (let m of members) {
-            if (!iron.members[m]) iron.members[m] = {};
-            iron.members[m][type] = true;
+        /**
+        * Gets IRON data for a specific member.
+        * Data indicates if the member has earned iron via deployment and/or commendation this week.
+        * @param key The transaction key to ensure the method caller holds the lock for this data.
+        * @param memberID Discord snowflake user ID
+        * @returns The member's iron data
+        */
+        readIron(key: string, memberID: string): MemberWeeklyIronLog {
+            this.tryKey(key);
+
+            return this.iron.members[memberID] || {};
         }
 
-        writeJSON();
+        /**
+         * Writes IRON data for a set of members as a batch.
+         * Data indicates if the member has earned iron via deployment and/or commendation this week.
+         * @param key The transaction key to ensure the method caller holds the lock for this data.
+         * @param members Array of Discord snowflake user IDs
+         * @param type The type of deployment to mark this user as having taken part in.
+         */
+        writeIron(key: string, members: string[], type: IronAchivementType): void {
+            this.tryKey(key);
+
+            for (let m of members) {
+                if (!this.iron.members[m]) this.iron.members[m] = {};
+                this.iron.members[m][type] = true;
+            }
+
+            this.writeJSON();
+        }
+
+        /**
+         * Obtain the current week's timestamp. Data is validated when this is requested.
+         * @param key The transaction key to ensure the method caller holds the lock for this data.
+         * @returns The current week's timestamp.
+         */
+        async getCurrentWeekTimestamp(key: string): Promise<number> {
+            // tryKey called in validateData
+            this.validateData(key);
+
+            return this.iron.weekTimestamp;
+        }
+
+        /**
+         * Resets IRON data as if a new week started. Only avaliable in dev mode.
+         * @param key The transaction key to ensure the method caller holds the lock for this data.
+         */
+        resetIron(key: string) {
+            if (!process.env.DEV_MOD) {
+                throw new Error(`Attempted to reset IRON outside of dev mode.`);
+            }
+            this.tryKey(key);
+
+            this.iron = {
+                weekTimestamp: this.calcCurWeekTimestamp(),
+                members: {}
+            };
+            this.writeJSON();
+        }
+
+        /**
+         * Internal method to perform the actual JSON write.
+         */
+        private writeJSON(): void {
+            // Key not required because this is used internally only
+            fs.writeFileSync(this.fileLoc, JSON.stringify(this.iron), {encoding: 'utf-8'});
+        }
     }
 
-    /**
-     * Only works with dev mode enabled.
-     * Clears IRON data on request.
-     */
-    export function resetJSON() {
-        if (!process.env.DEV_MODE) return;
-        iron.members = {};
-        writeJSON();
-    }
+    export const transactionManager = new IronLock();
 }
 
 /**

@@ -64,14 +64,6 @@ const commands: {[key: string]: ICommand} = {
 
             // 3. execute distribution
             let report = await distributeIron(members, type);
-            if (report instanceof Error) {
-                // Its possible that the report was processed mid weekly tick, try again
-                report = await distributeIron(members, type);
-                if (report instanceof Error) {
-                    // Ok now its clearly a problem, let a dev handle it.
-                    throw report;
-                }
-            }
 
             // 4. report results
             const author = await guild.members.fetch(interaction.user.id);

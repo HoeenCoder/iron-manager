@@ -97,12 +97,12 @@ const commands: {[key: string]: ICommand} = {
             const postfix = interaction.options.getString('postfix') || '';
 
             if (!SHIP_PREFIXES.includes(prefix)) {
-                interaction.followUp({content: `:x: invalid prefix "${prefix}"`});
+                await interaction.followUp({content: `:x: invalid prefix "${prefix}"`});
                 return;
             }
 
             if (!SHIP_POSTFIXES.includes(postfix)) {
-                interaction.followUp({content: `:x: invalid postfix "${postfix}"`});
+                await interaction.followUp({content: `:x: invalid postfix "${postfix}"`});
                 return;
             }
 
@@ -204,7 +204,7 @@ const commands: {[key: string]: ICommand} = {
                     },
                 );
 
-            interaction.reply({embeds: [embed], ephemeral: !share});
+            await interaction.reply({embeds: [embed], ephemeral: !share});
         }
     }
 };

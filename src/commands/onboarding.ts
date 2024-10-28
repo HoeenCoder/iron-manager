@@ -14,7 +14,7 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.Administrator),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
-                interaction.reply({content: `:x: Access Denied. Requires High Command permissions.`, ephemeral: true});
+                await interaction.reply({content: `:x: Access Denied. Requires High Command permissions.`, ephemeral: true});
                 return;
             }
 
@@ -25,7 +25,7 @@ const commands: {[key: string]: ICommand} = {
 
             const onboardingChannel = await guild.channels.fetch(Config.onboarding_channel_id);
             if (!onboardingChannel) {
-                interaction.reply({content: `:x: Could not find onboarding report channel, please make sure its configured!`, ephemeral: true});
+                await interaction.reply({content: `:x: Could not find onboarding report channel, please make sure its configured!`, ephemeral: true});
                 return;
             }
 
@@ -174,7 +174,7 @@ const commands: {[key: string]: ICommand} = {
             },
             'onboarding-applicant-approve': {
                 async execute(interaction) {
-                    interaction.deferUpdate();
+                    await interaction.deferUpdate();
 
                     // 0. Permission checks
                     if (!interaction.isButton()) {
@@ -183,7 +183,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                         return;
                     }
 
@@ -322,7 +322,7 @@ const commands: {[key: string]: ICommand} = {
                                     .setStyle(Discord.ButtonStyle.Primary)
                             )
 
-                        interaction.followUp({
+                        await interaction.followUp({
                             embeds: [problemEmbed],
                             components: [buttonRow]
                         });
@@ -337,7 +337,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                         return;
                     }
 
@@ -400,7 +400,7 @@ const commands: {[key: string]: ICommand} = {
                         return;
                     }
 
-                    interaction.deferReply();
+                    await interaction.deferReply();
 
                     const guild = await getGuild();
                     if (!guild) {
@@ -476,13 +476,13 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                         return;
                     }
 
                     // Delete the message
-                    interaction.message.delete();
-                    interaction.reply({content: `:white_check_mark: Application Deleted.`, ephemeral: true});
+                    await interaction.message.delete();
+                    await interaction.reply({content: `:white_check_mark: Application Deleted.`, ephemeral: true});
                 }
             },
             'onboarding-problems-addressed': {
@@ -493,13 +493,13 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                         return;
                     }
 
                     // Delete the message
-                    interaction.message.delete();
-                    interaction.reply({content: `:white_check_mark: Problem Report Deleted.`, ephemeral: true});
+                    await interaction.message.delete();
+                    await interaction.reply({content: `:white_check_mark: Problem Report Deleted.`, ephemeral: true});
                 },
             }
         }
@@ -515,14 +515,14 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                 return;
             }
 
             const input = interaction.options.getString('members', true);
             const matches = [...(input || '').matchAll(/<@([0-9]+)>/g)].map(v => v[1]);
             if (!input || !matches || !matches.length) {
-                interaction.followUp({content: `:x: No members provided.`, ephemeral: true});
+                await interaction.followUp({content: `:x: No members provided.`, ephemeral: true});
                 return;
             }
 

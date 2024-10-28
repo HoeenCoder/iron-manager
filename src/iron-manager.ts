@@ -36,7 +36,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             continue;
         }
 
-        const data = IronLogger.transactionManager.readIron(member.id, key);
+        const data = IronLogger.transactionManager.readIron(key, member.id);
         if (data[type]) {
             // Already got iron
             results.notIssued.push(member);

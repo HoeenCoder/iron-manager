@@ -10,7 +10,7 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Replies with pong.'),
 
         async execute(interaction) {
-            interaction.reply({content: 'Pong!', ephemeral: true});
+            await interaction.reply({content: 'Pong!', ephemeral: true});
         }
     },
     week: {
@@ -24,7 +24,8 @@ const commands: {[key: string]: ICommand} = {
 
         async execute(interaction) {
             const share = !!interaction.options.getBoolean('broadcast');
-            interaction.deferReply({ephemeral: !share});
+            await interaction.deferReply({ephemeral: !share});
+
             const key = await IronLogger.transactionManager.lock();
             const weekStart = await IronLogger.transactionManager.getCurrentWeekTimestamp(key);
             await IronLogger.transactionManager.unlock(key);
@@ -41,7 +42,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            interaction.reply({embeds: [embed]});
+            await interaction.followUp({embeds: [embed]});
         }
     },
     earnableiron: {
@@ -69,7 +70,7 @@ const commands: {[key: string]: ICommand} = {
 
             const member = await guild.members.fetch(providedUser.id);
             if (!member) {
-                interaction.reply({content: `:x: Member not found.`, ephemeral: true});
+                await interaction.reply({content: `:x: Member not found.`, ephemeral: true});
                 return;
             }
 
@@ -90,7 +91,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            interaction.followUp({embeds: [embed]});
+            await interaction.followUp({embeds: [embed]});
         }
     }
 };

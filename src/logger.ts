@@ -230,6 +230,246 @@ export namespace IronLogger {
 }
 
 /**
+ * Manages deployment voice activity logging
+ */
+export namespace DeploymentActivityLogger {
+    interface DeploymentActivityJSON {
+        active: boolean,
+        members: {[memberId: string]: MemberDeploymentActivityRecord}
+    }
+
+    export interface MemberDeploymentActivityRecord {
+        joined: number | null
+        totalTime: number
+    }
+
+    export interface DeploymentQualificationRecord {
+        qualified: string[],
+        particpated: string[]
+    }
+
+    export const MINIMUM_TIME_TO_QUALIFY = 1000 * 60 * 60; // 1 hour
+
+    class DeploymentActivityLock extends Lock {
+        private fileLoc: string;
+        private activityRecords: DeploymentActivityJSON;
+        private recoveryRequired: boolean = false;
+
+        constructor() {
+            super();
+            this.fileLoc = `${__dirname}/../storage/${getFileName('deployment-voice')}.json`;
+
+            if (!fs.existsSync(this.fileLoc)) {
+                this.activityRecords = {
+                    active: false,
+                    members: {}
+                };
+
+                fs.writeFileSync(this.fileLoc, JSON.stringify(this.activityRecords), {encoding: 'utf-8'});
+            } else {
+                this.activityRecords = JSON.parse(fs.readFileSync(this.fileLoc, {encoding: 'utf-8'}));
+            }
+
+            if (this.activityRecords.active) {
+                this.recoveryRequired = true;
+            }
+        }
+
+        async runRecovery(): Promise<void> {
+            if (!this.recoveryRequired) return;
+            const key = await this.lock();
+            const inactiveIds = Object.keys(this.activityRecords.members);
+
+            // 1. Ensure all members activly in VC are marked as active
+            const guild = await getGuild();
+            if (!guild || !guild.available) {
+                // Something is wrong...
+                throw new Error('Unable to find guild when recovering deployment activity logger after a reboot.');
+            }
+
+            const voiceCategory = await guild.channels.fetch(Config.voice_category_id);
+            if (!voiceCategory) return;
+            if (voiceCategory.type !== Discord.ChannelType.GuildCategory) {
+                throw new Error(`When performing deployment activity recovery, voice channel category is not a category. ID: ${Config.voice_category_id}`);
+            }
+
+            for (const [channelId, channel] of voiceCategory.children.cache) {
+                if (channel.type !== Discord.ChannelType.GuildVoice || channel.members.size < 1) continue;
+
+                for (const [memberId, member] of channel.members) {
+                    const idx = inactiveIds.indexOf(member.id);
+                    if (idx >= 0) {
+                        inactiveIds.splice(idx, 1);
+                    }
+
+                    if (!this.activityRecords.members[member.id]) {
+                        this.activityRecords.members[member.id] = {joined: null, totalTime: 0};
+                    }
+
+                    if (!this.activityRecords.members[member.id].joined) {
+                        this.activityRecords.members[member.id].joined = Date.now();
+                    }
+                }
+            }
+
+            // 2. Ensure all records not in VC are marked as inactive
+            for (const memberId of inactiveIds) {
+                if (this.activityRecords.members[memberId].joined) {
+                    this.activityRecords.members[memberId].totalTime +=
+                        Date.now() - this.activityRecords.members[memberId].joined;
+                    this.activityRecords.members[memberId].joined = null;
+                }
+            }
+
+            // 3. Write data, release lock
+            this.writeJSON();
+            this.recoveryRequired = false;
+            await this.unlock(key);
+        }
+
+        reportJoin(key: string, memberId: string) {
+            this.tryKey(key);
+            if (!this.activityRecords.members[memberId]) {
+                this.activityRecords.members[memberId] = {
+                    joined: null,
+                    totalTime: 0
+                };
+            }
+
+            if (this.activityRecords.members[memberId].joined) {
+                throw new Error(`Join reported when user is already marked as active`);
+            }
+
+            this.activityRecords.members[memberId].joined = Date.now();
+            this.writeJSON();
+        }
+
+        reportLeave(key: string, memberId: string) {
+            this.tryKey(key);
+            if (!this.activityRecords.members[memberId]) {
+                this.activityRecords.members[memberId] = {
+                    joined: null,
+                    totalTime: 0
+                };
+            }
+
+            if (!this.activityRecords.members[memberId].joined) {
+                throw new Error(`Leave reported when user isn't marked as active`);
+            }
+
+            this.activityRecords.members[memberId].totalTime += Date.now() - this.activityRecords.members[memberId].joined;
+            this.activityRecords.members[memberId].joined = null;
+            this.writeJSON();
+        }
+
+        isDeploymentActive(key: string): boolean {
+            this.tryKey(key);
+            return this.activityRecords.active;
+        }
+
+        async startDeployment(key: string) {
+            this.tryKey(key);
+            if (this.activityRecords.active) {
+                throw new Error(`Attempting to start a deployment while one is already running.`);
+            }
+            this.resetJSON();
+
+            // Detect members who are already deployed
+            const guild = await getGuild();
+            if (!guild || !guild.available) {
+                // Something is wrong...
+                throw new Error('Unable to find guild when starting deployment.');
+            }
+
+            const voiceCategory = await guild.channels.fetch(Config.voice_category_id);
+            if (!voiceCategory) return;
+            if (voiceCategory.type !== Discord.ChannelType.GuildCategory) {
+                throw new Error(`When performing starting deployment, voice channel category is not a category. ID: ${Config.voice_category_id}`);
+            }
+
+            for (const [channelId, channel] of voiceCategory.children.cache) {
+                if (channel.type !== Discord.ChannelType.GuildVoice || channel.members.size < 1) continue;
+
+                for (const [memberId, member] of channel.members) {
+                    if (!this.activityRecords.members[member.id]) {
+                        this.activityRecords.members[member.id] = {joined: null, totalTime: 0};
+                    }
+
+                    if (!this.activityRecords.members[member.id].joined) {
+                        this.activityRecords.members[member.id].joined = Date.now();
+                    }
+                }
+            }
+
+            this.activityRecords.active = true;
+        }
+
+        endDeployment(key: string) {
+            this.tryKey(key);
+            if (!this.activityRecords.active) {
+                throw new Error(`Attempting to end a deployment while one isn't running.`);
+            }
+
+            this.activityRecords.active = false;
+            const endTime = Date.now();
+            for (const memberId in this.activityRecords.members) {
+                if (this.activityRecords.members[memberId].joined) {
+                    this.activityRecords.members[memberId].totalTime +=
+                        endTime - this.activityRecords.members[memberId].joined;
+                    this.activityRecords.members[memberId].joined = null;
+                }
+            }
+            this.writeJSON();
+        }
+
+        getQualifiedMembers(key: string): DeploymentQualificationRecord {
+            this.tryKey(key);
+
+            const results: DeploymentQualificationRecord = {
+                qualified: [],
+                particpated: []
+            };
+
+            for (let memberId in this.activityRecords.members) {
+                const record = this.activityRecords.members[memberId];
+                let time = record.totalTime;
+                if (record.joined) {
+                    time += Date.now() - record.joined;
+                }
+
+                if (time >= MINIMUM_TIME_TO_QUALIFY) {
+                    results.qualified.push(memberId);
+                } else {
+                    results.particpated.push(memberId);
+                }
+            }
+
+            return results;
+        }
+
+        getMemberData(key: string, memberId: string): MemberDeploymentActivityRecord | null {
+            this.tryKey(key);
+            return this.activityRecords.members[memberId] || null;
+        }
+
+        private resetJSON() {
+            this.activityRecords = {
+                active: false,
+                members: {}
+            };
+
+            this.writeJSON();
+        }
+
+        private writeJSON() {
+            fs.writeFileSync(this.fileLoc, JSON.stringify(this.activityRecords), {encoding: 'utf-8'});
+        }
+    }
+
+    export const transactionManager = new DeploymentActivityLock();
+}
+
+/**
  * General purpose logging functionality
  */
 export namespace Logger {
@@ -245,7 +485,6 @@ export namespace Logger {
     }
 
     export async function logToChannel(msg: string) {
-        console.log(`[NOTICE] ${msg}`);
         const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS);
         fs.appendFileSync(`${__dirname}/../storage/${getFileName('notices')}.log`, `${timestamp}: ${msg}\n\n`, {encoding: 'utf-8'});
 

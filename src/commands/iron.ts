@@ -26,7 +26,7 @@ const commands: {[key: string]: ICommand} = {
 
             // 1. check permissions
             if (!(await roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember))) {
-                interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                 return;
             }
 
@@ -34,7 +34,7 @@ const commands: {[key: string]: ICommand} = {
             // Should be enforced by discord, verify it actually was
             const type: IronLogger.IronAchivementType = interaction.options.getString('type') as IronLogger.IronAchivementType;
             if (!['deployment', 'commendation'].includes(type)) {
-                interaction.followUp({content: `:x: Type must be "deployment" or "commendation".`, ephemeral: true});
+                await interaction.followUp({content: `:x: Type must be "deployment" or "commendation".`, ephemeral: true});
                 return;
             }
 
@@ -42,7 +42,7 @@ const commands: {[key: string]: ICommand} = {
             const input = interaction.options.getString('members');
             const matches = [...(input || '').matchAll(/<@([0-9]+)>/g)].map(v => v[1]);
             if (!input || !matches || !matches.length) {
-                interaction.followUp({content: `:x: No members provided.`, ephemeral: true});
+                await interaction.followUp({content: `:x: No members provided.`, ephemeral: true});
                 return;
             }
 
@@ -150,7 +150,7 @@ const commands: {[key: string]: ICommand} = {
 
             // check permissions
             if (!(await roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember))) {
-                interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                 return;
             }
 
@@ -176,7 +176,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            interaction.followUp({embeds: [embed]});
+            await interaction.followUp({embeds: [embed]});
         }
     }
 };

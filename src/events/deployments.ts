@@ -11,8 +11,8 @@ const events: {[key: string]: IEvent} = {
             if (oldState.channelId === newState.channelId) return; // No channel change
             if (!oldState.channel && !newState.channel) return; // Double null channel
 
-            const oldActive = oldState.channel && oldState.channel.parent && oldState.channel.parent.id === Config.voice_category_id;
-            const newActive = newState.channel && newState.channel.parent && newState.channel.parent.id === Config.voice_category_id;
+            const oldActive = oldState.channel !== null && oldState.channel.parentId === Config.voice_category_id;
+            const newActive = newState.channel !== null && newState.channel.parentId === Config.voice_category_id;
             if (oldActive === newActive) return; // Swapped between two channels in the same category group, ignore
 
             const key = await DeploymentActivityLogger.transactionManager.lock();

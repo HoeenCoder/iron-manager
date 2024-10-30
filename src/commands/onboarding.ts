@@ -241,7 +241,7 @@ const commands: {[key: string]: ICommand} = {
                                 'europe': /(?:europe|eu)/i,
                                 'oceania': /(?:oceania|oc|australia|aus)/i,
                                 'asia': /(?:asia|as)/i,
-                                //'africa': /(?:africa|af)/i
+                                'africa': /(?:africa|af)/i
                                 //'antartica': /(?:antartica|an)/i
                             }
                         }

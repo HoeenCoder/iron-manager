@@ -277,6 +277,7 @@ export namespace DeploymentActivityLogger {
 
         async runRecovery(): Promise<void> {
             if (!this.recoveryRequired) return;
+            this.recoveryRequired = false;
             const key = await this.lock();
             const inactiveIds = Object.keys(this.activityRecords.members);
 
@@ -323,7 +324,6 @@ export namespace DeploymentActivityLogger {
 
             // 3. Write data, release lock
             this.writeJSON();
-            this.recoveryRequired = false;
             await this.unlock(key);
         }
 

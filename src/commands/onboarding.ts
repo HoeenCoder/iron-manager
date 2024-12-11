@@ -5,6 +5,27 @@ import { createUsername, tryPromotion } from "../iron-manager";
 
 // rejectorId -> [rejecteeId, applicationMessageId]
 const rejectionTable: {[rejectorId: string]: string[]} = {};
+const flagTable: {[flaggerId: string]: string} = {};
+
+// Standard button row, frequently used
+const onboardingButtonRow = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
+    .addComponents(
+        new Discord.ButtonBuilder()
+            .setCustomId('onboarding-applicant-approve')
+            .setLabel('Approve')
+            .setStyle(Discord.ButtonStyle.Success),
+        new Discord.ButtonBuilder()
+            .setCustomId('onboarding-applicant-reject')
+            .setLabel('Reject')
+            .setStyle(Discord.ButtonStyle.Danger),
+        new Discord.ButtonBuilder()
+            .setCustomId('onboarding-applicant-flag')
+            .setLabel('Flag for Review')
+            .setStyle(Discord.ButtonStyle.Danger),
+        new Discord.ButtonBuilder()
+            .setCustomId('onboarding-applicant-delete')
+            .setLabel('Delete Application')
+            .setStyle(Discord.ButtonStyle.Secondary));
 
 const commands: {[key: string]: ICommand} = {
     'post-onboarding-message': {
@@ -146,28 +167,14 @@ const commands: {[key: string]: ICommand} = {
                             {name: 'Has Microphone?', value: hasMic},
                             {name: 'Continent', value: continent},
                             {name: 'Stated they are 16+?', value: ageCheck},
-                            {name: 'Application Status', value: 'Not Processed Yet'}
+                            {name: 'Application Status', value: 'Not Processed Yet'},
+                            {name: 'Reason', value: 'N/A'}
                         ).setTimestamp()
                         .setFooter({text: `Review the information and click Approve, or Reject.`});
 
                     if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-                    const buttonRow = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
-                        .addComponents(
-                            new Discord.ButtonBuilder()
-                                .setCustomId('onboarding-applicant-approve')
-                                .setLabel('Approve')
-                                .setStyle(Discord.ButtonStyle.Success),
-                            new Discord.ButtonBuilder()
-                                .setCustomId('onboarding-applicant-reject')
-                                .setLabel('Reject')
-                                .setStyle(Discord.ButtonStyle.Danger),
-                            new Discord.ButtonBuilder()
-                                .setCustomId('onboarding-applicant-delete')
-                                .setLabel('Delete Application')
-                                .setStyle(Discord.ButtonStyle.Secondary));
-
-                    await onboardingChannel.send({embeds: [embed], components: [buttonRow]});
+                    await onboardingChannel.send({embeds: [embed], components: [onboardingButtonRow]});
 
                     await interaction.reply({content: `:white_check_mark: Your application was received and is under review!`, ephemeral: true});
                 }
@@ -381,8 +388,7 @@ const commands: {[key: string]: ICommand} = {
                                     .setLabel('Reason (shared with applicant)')
                                     .setStyle(Discord.TextInputStyle.Paragraph)
                                     .setMaxLength(400)
-                                    .setRequired(true))
-                        );
+                                    .setRequired(true)));
 
                     rejectionTable[interaction.user.id] = [applicant.id, interaction.message.id];
 
@@ -437,15 +443,15 @@ const commands: {[key: string]: ICommand} = {
                         const applicationMessage = await interaction.channel.messages.fetch(rejectionRecord[1]);
 
                         const appEmbed = applicationMessage.embeds[0];
-                        const field = appEmbed.fields.find(f => f.name === 'Application Status');
+                        let field = appEmbed.fields.find(f => f.name === 'Application Status');
                         if (field) {
                             field.value = `Rejected by <@${interaction.user.id}>`;
                         }
 
-                        appEmbed.fields.push({
-                            name: `Rejection Reason`,
-                            value: reason.slice(0, 1024)
-                        });
+                        field = appEmbed.fields.find(f => f.name === 'Reason');
+                        if (field) {
+                            field.value = reason.slice(0, 1024);
+                        }
 
                         // Update embed, post new message if needed
                         applicationMessage.edit({
@@ -458,7 +464,7 @@ const commands: {[key: string]: ICommand} = {
 
                     if (applicant.kickable) {
                         if (process.env.DEV_MODE) {
-                            await interaction.followUp(`Reject applicant <@${applicant.id}> would be kicked, but development mode is enabled which disables this feature.`);
+                            await interaction.followUp(`Rejected applicant <@${applicant.id}> would be kicked, but development mode is enabled which disables this feature.`);
                         } else {
                             await applicant.kick(`Application rejected by ${interaction.user.displayName}, reason: ${reason}`);
                             await interaction.followUp(`Application rejected, applicant kicked.`);
@@ -466,6 +472,120 @@ const commands: {[key: string]: ICommand} = {
                     } else {
                         await interaction.followUp(`Attempted to kick rejected applicant <@${applicant.id}>, but could not. Please manually remove them from the server.`);
                     }
+                },
+            },
+            'onboarding-applicant-flag': {
+                async execute(interaction) {
+                    if (!interaction.isButton()) {
+                        throw new Error(`Onboarding: expected button, got ${interaction.isModalSubmit() ?
+                            'Modal Submission' : interaction.componentType}.`);
+                    }
+
+                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        return;
+                    }
+
+                    // get reason from modal
+                    const modal = new Discord.ModalBuilder()
+                        .setCustomId('onboarding-flag-modal')
+                        .setTitle('Flag Applicant')
+                        .addComponents(
+                            new Discord.ActionRowBuilder<Discord.ModalActionRowComponentBuilder>().addComponents(
+                                new Discord.TextInputBuilder()
+                                    .setCustomId('onboarding-flag-reason')
+                                    .setLabel('Reason for the flag')
+                                    .setStyle(Discord.TextInputStyle.Paragraph)
+                                    .setMaxLength(500)
+                                    .setRequired(true)));
+
+                    flagTable[interaction.user.id] = interaction.message.id;
+
+                    await interaction.showModal(modal);
+                },
+            },
+            'onboarding-flag-modal': {
+                async execute(interaction) {
+                    if (!interaction.isModalSubmit()) {
+                        throw new Error(`Onboarding Rejection Submission: expected modal submission, got ${interaction.componentType}`);
+                    }
+
+                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        return;
+                    }
+
+                    await interaction.deferReply({ephemeral: true});
+                    const embedMessageId = flagTable[interaction.user.id];
+                    const reason = interaction.fields.getTextInputValue('onboarding-flag-reason') || 'No reason provided';
+
+                    if (interaction.channel) {
+                        const applicationMessage = await interaction.channel.messages.fetch(embedMessageId);
+
+                        const appEmbed = applicationMessage.embeds[0];
+                        let field = appEmbed.fields.find(f => f.name === 'Application Status');
+                        if (field) {
+                            field.value = `Flagged by <@${interaction.user.id}>`;
+                        }
+
+                        field = appEmbed.fields.find(f => f.name === 'Reason');
+                        if (field) {
+                            field.value = reason.slice(0, 1024);
+                        }
+
+                        const button = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
+                            .addComponents(
+                                new Discord.ButtonBuilder()
+                                    .setCustomId('onboarding-flag-clear')
+                                    .setLabel('Remove Flag')
+                                    .setStyle(Discord.ButtonStyle.Primary));
+
+                        // Update embed, post new message if needed
+                        applicationMessage.edit({
+                            embeds: [appEmbed],
+                            components: [button]
+                        });
+
+                        await interaction.followUp(`:white_check_mark: Application flagged.`);
+                    } else {
+                        await interaction.followUp(`Unable to flag application, message not found.`);
+                    }
+                },
+            },
+            'onboarding-flag-clear': {
+                async execute(interaction) {
+                    if (!interaction.isButton()) {
+                        throw new Error(`Onboarding: expected button, got ${interaction.isModalSubmit() ?
+                            'Modal Submission' : interaction.componentType}.`);
+                    }
+
+                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        return;
+                    }
+
+                    const appEmbed = interaction.message.embeds[0];
+                    const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
+                    const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
+
+                    let field = appEmbed.fields.find(f => f.name === 'Application Status');
+                    if (field) {
+                        field.value = `Not Processed Yet`;
+                    }
+
+                    field = appEmbed.fields.find(f => f.name === 'Reason');
+                    let reason = "";
+                    if (field) {
+                        reason = field.value;
+                        field.value = 'N/A';
+                    }
+
+                    interaction.message.edit({
+                        embeds: [appEmbed],
+                        components: [onboardingButtonRow]
+                    });
+
+                    await interaction.reply({content: `<@${interaction.user.id}> cleared the flag on <@${userId}>'s application.\nThe flag reason was:\n> ${reason}`});
                 },
             },
             'onboarding-applicant-delete': {

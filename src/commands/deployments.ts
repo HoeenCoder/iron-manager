@@ -5,7 +5,7 @@ import Luxon = require('luxon');
 
 function generateParticipantsMessages(records: DeploymentActivityLogger.DeploymentQualificationRecord): string[] {
     const messages: string[] = [];
-    let msg = '```\n**Participants**\n';
+    let msg = '```\n**Participants:**\n';
     for (let i = 0; i < records.qualified.length; i++) {
         const toAdd = `> ${i + 1} - <@${records.qualified[i]}>\n`;
         if (msg.length + toAdd.length > 1950) {

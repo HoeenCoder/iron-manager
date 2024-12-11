@@ -89,7 +89,7 @@ const commands: {[key: string]: ICommand} = {
             // 1. Validation
             const ownerIds = Object.values(CHANNEL_OWNERS);
             if (ownerIds.includes(interaction.user.id) && !roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: You already have a super destroy VC, please use that or wait for it to expire before making a new one.`});
+                await interaction.followUp({content: `:x: You already have a super destroyer VC, please use that or wait for it to expire before making a new one.`});
                 return;
             }
 

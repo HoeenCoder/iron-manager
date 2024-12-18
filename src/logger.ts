@@ -205,7 +205,7 @@ export namespace IronLogger {
          * @param key The transaction key to ensure the method caller holds the lock for this data.
          */
         resetIron(key: string) {
-            if (!process.env.DEV_MOD) {
+            if (!process.env.DEV_MODE) {
                 throw new Error(`Attempted to reset IRON outside of dev mode.`);
             }
             this.tryKey(key);

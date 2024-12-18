@@ -25,18 +25,29 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({ephemeral: true});
 
             // 1. check permissions
-            if (!(await roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember))) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
-                return;
-            }
-
-            // 2. validate arguments
             // Should be enforced by discord, verify it actually was
             const type: IronLogger.IronAchivementType = interaction.options.getString('type') as IronLogger.IronAchivementType;
             if (!['deployment', 'commendation'].includes(type)) {
                 await interaction.followUp({content: `:x: Type must be "deployment" or "commendation".`, ephemeral: true});
                 return;
             }
+
+            if (type === "deployment") {
+                // Deployment IRON requires freedom captain+
+                if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                    await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                    return;
+                }
+            } else {
+                // Commendation IRON required IRON commission+
+                if (!roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
+                    await interaction.followUp({content: `:x: Access Denied. Requires IRON Commission permissions.`, ephemeral: true});
+                    return;
+                }
+            }
+
+            // 2. validate arguments
+            // Type is already validated as it was needed for perm checks
 
             // Could be anything, make sure its user mentions
             const input = interaction.options.getString('members');

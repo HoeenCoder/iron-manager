@@ -166,6 +166,64 @@ const commands: {[key: string]: ICommand} = {
 
             await DeploymentActivityLogger.transactionManager.unlock(key);
         },
+    },
+    'get-deployment-logs': {
+        data: new Discord.SlashCommandBuilder()
+            .setName('get-deployment-logs')
+            .setDescription('Get logs from a past deployment.')
+            .addStringOption(o =>
+                o.setName('file')
+                    .setDescription('Logs names are the timestamp of when the MOD started. YYYY-MM-DDTHH-MM-SS.log')
+                    .setRequired(true)
+                    .setAutocomplete(true))
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+        async execute(interaction) {
+            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                    await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                    return;
+                }
+            }
+
+            const file = interaction.options.getString('file') || '';
+            const validFiles = DeploymentActivityLogger.transactionManager.getLogFileNames();
+            if (!validFiles.includes(file)) {
+                await interaction.reply({content: `:x: invalid file name "${file}"`, ephemeral: true});
+                return;
+            }
+
+            if (!interaction.channel || !interaction.channel.isSendable()) {
+                await interaction.reply({content: ':x: You must use this command in a text channel.', ephemeral: true});
+                return;
+            }
+
+            // send file
+            await interaction.reply({
+                content: `Deployment log file attached. You can search for members by their unique discord ID: https://www.reddit.com/r/discordapp/comments/myncgd/comment/gvvysmj/`,
+                files: [{
+                    attachment: DeploymentActivityLogger.transactionManager.getFullLogFilePath(file),
+                    name: `${file}`
+                }],
+                ephemeral: true
+            });
+        },
+        async autocomplete(interaction) {
+            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                // Those who do not have permission do not see the options.
+                await interaction.respond([]);
+                return;
+            }
+
+            const focusedOption = interaction.options.getFocused(true);
+
+            const options = DeploymentActivityLogger.transactionManager.getLogFileNames()
+                .filter(f => f.startsWith(focusedOption.value))
+                .map(v => {
+                    return {name: v, value: v};
+                });
+
+            await interaction.respond(options.slice(0, 24));
+        }
     }
 };
 

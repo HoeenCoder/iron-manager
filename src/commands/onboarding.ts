@@ -642,7 +642,7 @@ const commands: {[key: string]: ICommand} = {
             const input = interaction.options.getString('members', true);
             const matches = [...(input || '').matchAll(/<@([0-9]+)>/g)].map(v => v[1]);
             if (!input || !matches || !matches.length) {
-                await interaction.followUp({content: `:x: No members provided.`, ephemeral: true});
+                await interaction.reply({content: `:x: No members provided.`, ephemeral: true});
                 return;
             }
 

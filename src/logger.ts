@@ -235,6 +235,7 @@ export namespace IronLogger {
 export namespace DeploymentActivityLogger {
     interface DeploymentActivityJSON {
         active: boolean,
+        started: string,
         members: {[memberId: string]: MemberDeploymentActivityRecord}
     }
 
@@ -251,23 +252,30 @@ export namespace DeploymentActivityLogger {
     export const MINIMUM_TIME_TO_QUALIFY = 1000 * 60 * 60; // 1 hour
 
     class DeploymentActivityLock extends Lock {
-        private fileLoc: string;
+        private jsonFileLoc: string;
+        private logDirLoc: string;
         private activityRecords: DeploymentActivityJSON;
         private recoveryRequired: boolean = false;
 
         constructor() {
             super();
-            this.fileLoc = `${__dirname}/../storage/${getFileName('deployment-voice')}.json`;
+            this.jsonFileLoc = `${__dirname}/../storage/${getFileName('deployment-voice')}.json`;
+            this.logDirLoc = `${__dirname}/../storage/deployment-logs`;
 
-            if (!fs.existsSync(this.fileLoc)) {
+            if (!fs.existsSync(this.jsonFileLoc)) {
                 this.activityRecords = {
                     active: false,
+                    started: '',
                     members: {}
                 };
 
-                fs.writeFileSync(this.fileLoc, JSON.stringify(this.activityRecords), {encoding: 'utf-8'});
+                fs.writeFileSync(this.jsonFileLoc, JSON.stringify(this.activityRecords), {encoding: 'utf-8'});
             } else {
-                this.activityRecords = JSON.parse(fs.readFileSync(this.fileLoc, {encoding: 'utf-8'}));
+                this.activityRecords = JSON.parse(fs.readFileSync(this.jsonFileLoc, {encoding: 'utf-8'}));
+            }
+
+            if (!fs.existsSync(this.logDirLoc)) {
+                fs.mkdirSync(this.logDirLoc);
             }
 
             if (this.activityRecords.active) {
@@ -294,6 +302,8 @@ export namespace DeploymentActivityLogger {
                 throw new Error(`When performing deployment activity recovery, voice channel category is not a category. ID: ${Config.voice_category_id}`);
             }
 
+            this.appendSpecialLog('Unexpected reboot detected, initiating recovery mode.');
+
             for (const [channelId, channel] of voiceCategory.children.cache) {
                 if (channel.type !== Discord.ChannelType.GuildVoice || channel.members.size < 1) continue;
 
@@ -309,6 +319,7 @@ export namespace DeploymentActivityLogger {
 
                     if (!this.activityRecords.members[member.id].joined) {
                         this.activityRecords.members[member.id].joined = Date.now();
+                        this.appendLogFile(member.id, true, this.activityRecords.members[member.id].totalTime);
                     }
                 }
             }
@@ -319,11 +330,13 @@ export namespace DeploymentActivityLogger {
                     this.activityRecords.members[memberId].totalTime +=
                         Date.now() - this.activityRecords.members[memberId].joined;
                     this.activityRecords.members[memberId].joined = null;
+                    this.appendLogFile(memberId, false, this.activityRecords.members[memberId].totalTime);
                 }
             }
 
             // 3. Write data, release lock
             this.writeJSON();
+            this.appendSpecialLog('Recovery completed.');
             await this.unlock(key);
         }
 
@@ -341,6 +354,7 @@ export namespace DeploymentActivityLogger {
             }
 
             this.activityRecords.members[memberId].joined = Date.now();
+            this.appendLogFile(memberId, true, this.activityRecords.members[memberId].totalTime);
             this.writeJSON();
         }
 
@@ -360,6 +374,7 @@ export namespace DeploymentActivityLogger {
             this.activityRecords.members[memberId].totalTime += Date.now() - this.activityRecords.members[memberId].joined;
             this.activityRecords.members[memberId].joined = null;
             this.writeJSON();
+            this.appendLogFile(memberId, false, this.activityRecords.members[memberId].totalTime);
         }
 
         isDeploymentActive(key: string): boolean {
@@ -387,6 +402,9 @@ export namespace DeploymentActivityLogger {
                 throw new Error(`When performing starting deployment, voice channel category is not a category. ID: ${Config.voice_category_id}`);
             }
 
+            this.activityRecords.started = this.prepareLogFile();
+            this.appendSpecialLog('Deployment Started.');
+
             for (const [channelId, channel] of voiceCategory.children.cache) {
                 if (channel.type !== Discord.ChannelType.GuildVoice || channel.members.size < 1) continue;
 
@@ -398,10 +416,13 @@ export namespace DeploymentActivityLogger {
                     if (!this.activityRecords.members[member.id].joined) {
                         this.activityRecords.members[member.id].joined = Date.now();
                     }
+
+                    this.appendLogFile(member.id, true, 0);
                 }
             }
 
             this.activityRecords.active = true;
+            this.writeJSON();
         }
 
         endDeployment(key: string) {
@@ -417,9 +438,11 @@ export namespace DeploymentActivityLogger {
                     this.activityRecords.members[memberId].totalTime +=
                         endTime - this.activityRecords.members[memberId].joined;
                     this.activityRecords.members[memberId].joined = null;
+                    this.appendLogFile(memberId, false, this.activityRecords.members[memberId].totalTime);
                 }
             }
             this.writeJSON();
+            this.appendSpecialLog('Deployment Ended.');
         }
 
         getQualifiedMembers(key: string): DeploymentQualificationRecord {
@@ -452,9 +475,20 @@ export namespace DeploymentActivityLogger {
             return this.activityRecords.members[memberId] || null;
         }
 
+        // Keyless public methods, only reads info and there wont be an issue if a race conflict occurs.
+        getLogFileNames(): string[] {
+            return fs.readdirSync(this.logDirLoc, {encoding: 'utf-8'})
+                .filter(f => f.endsWith('.log'));
+        }
+
+        getFullLogFilePath(name: string): string {
+            return `${this.logDirLoc}/${name}`;
+        }
+
         private resetJSON() {
             this.activityRecords = {
                 active: false,
+                started: '',
                 members: {}
             };
 
@@ -462,7 +496,34 @@ export namespace DeploymentActivityLogger {
         }
 
         private writeJSON() {
-            fs.writeFileSync(this.fileLoc, JSON.stringify(this.activityRecords), {encoding: 'utf-8'});
+            fs.writeFileSync(this.jsonFileLoc, JSON.stringify(this.activityRecords), {encoding: 'utf-8'});
+        }
+
+        private prepareLogFile(): string {
+            const timestamp = Luxon.DateTime.utc();
+            const fileName = `${timestamp.toISODate()}T${timestamp.toISOTime().split('.')[0].replace(/:/g, '-')}`;
+            if (!fs.existsSync(`${this.logDirLoc}/${fileName}.log`)) {
+                fs.writeFileSync(`${this.logDirLoc}/${fileName}.log`,
+                    'ALL TIMES SHOWN ARE IN UTC.\nTIMESTAMP JOIN/LEAVE USER_ID ACTIVE TIME.\n', {encoding: 'utf-8'});
+            }
+
+            return fileName;
+        }
+
+        private appendLogFile(memberId: string, join: boolean, totalTime: number) {
+            const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS).replace(' ', ' ');
+            const type = join ? 'JOIN' : 'LEAVE';
+            const duration = Luxon.Duration.fromMillis(totalTime).rescale().toHuman({unitDisplay: "short"});
+
+            fs.appendFileSync(`${this.logDirLoc}/${this.activityRecords.started}.log`,
+                `${timestamp}: ${type} ${memberId}. Active Time: ${duration || '0 ms'}.\n`,
+                {encoding: 'utf-8'});
+        }
+
+        private appendSpecialLog(msg: string) {
+            const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS).replace(' ', ' ');
+            fs.appendFileSync(`${this.logDirLoc}/${this.activityRecords.started}.log`,
+                `${timestamp}: ${msg}\n`, {encoding: 'utf-8'});
         }
     }
 

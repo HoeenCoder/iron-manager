@@ -91,14 +91,15 @@ const commands: {[key: string]: ICommand} = {
                     .setDescription('Share the results of this command with everyone?'))
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
-            const share = !!interaction.options.getBoolean('broadcast');
+            const replyOptions: Discord.InteractionReplyOptions =
+                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
             let providedUser = interaction.options.getUser('member');
             if (!providedUser) providedUser = interaction.user;
 
-            await interaction.deferReply({ephemeral: !share});
+            await interaction.deferReply(replyOptions);
 
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`});
                 return;
             }
 
@@ -108,7 +109,7 @@ const commands: {[key: string]: ICommand} = {
 
             const member = await guild.members.fetch(providedUser.id);
             if (!member) {
-                await interaction.reply({content: `:x: Member not found.`, flags: Discord.MessageFlags.Ephemeral});
+                await interaction.reply({content: `:x: Member not found.`});
                 return;
             }
 
@@ -132,7 +133,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            await interaction.followUp({embeds: [embed], ephemeral: !share});
+            await interaction.followUp({embeds: [embed]});
 
             await DeploymentActivityLogger.transactionManager.unlock(key);
         },
@@ -216,7 +217,16 @@ const commands: {[key: string]: ICommand} = {
 
             const options = DeploymentActivityLogger.transactionManager.getLogFileNames()
                 .filter(f => f.startsWith(focusedOption.value))
-                .map(v => {
+                .sort((a, b) => {
+                    const partsA = ([] as number[]).concat(...a.slice(0, -4).split('T').map(p => p.split('-').map(Number)));
+                    const partsB = ([] as number[]).concat(...b.slice(0, -4).split('T').map(p => p.split('-').map(Number)));
+                    for (let i = 0; i < partsA.length; i++) {
+                        if (partsA[i] !== partsB[i]) {
+                            return partsB[i] - partsA[i];
+                        }
+                    }
+                    return 0; // Identical
+                }).map(v => {
                     return {name: v, value: v};
                 });
 

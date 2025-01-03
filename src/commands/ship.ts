@@ -191,7 +191,8 @@ const commands: {[key: string]: ICommand} = {
                 o.setName('broadcast')
                     .setDescription('Share the results of this command with everyone?')),
         async execute(interaction) {
-            const share = !!interaction.options.getBoolean('broadcast');
+            const replyOptions: Discord.InteractionReplyOptions =
+                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
 
             const embed = new Discord.EmbedBuilder()
                 .setColor(0x3b4d33)
@@ -204,7 +205,8 @@ const commands: {[key: string]: ICommand} = {
                     },
                 );
 
-            await interaction.reply({embeds: [embed], ephemeral: !share});
+            replyOptions.embeds = [embed];
+            await interaction.reply(replyOptions);
         }
     }
 };

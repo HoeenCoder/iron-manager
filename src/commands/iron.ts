@@ -156,12 +156,13 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
 
         async execute(interaction) {
-            const share = !!interaction.options.getBoolean('broadcast');
-            await interaction.deferReply({ephemeral: !share});
+            const replyOptions: Discord.InteractionReplyOptions =
+                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
+            await interaction.deferReply(replyOptions);
 
             // check permissions
-            if (!(await roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember))) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
+            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`});
                 return;
             }
 

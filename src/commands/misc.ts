@@ -23,8 +23,9 @@ const commands: {[key: string]: ICommand} = {
             ),
 
         async execute(interaction) {
-            const share = !!interaction.options.getBoolean('broadcast');
-            await interaction.deferReply({ephemeral: !share});
+            const replyOptions: Discord.InteractionReplyOptions =
+                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
+            await interaction.deferReply(replyOptions);
 
             const key = await IronLogger.transactionManager.lock();
             const weekStart = await IronLogger.transactionManager.getCurrentWeekTimestamp(key);
@@ -58,11 +59,12 @@ const commands: {[key: string]: ICommand} = {
                     .setDescription('Share the results of this command with everyone?')
             ),
         async execute(interaction) {
-            const share = !!interaction.options.getBoolean('broadcast');
+            const replyOptions: Discord.InteractionReplyOptions =
+                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
             let providedUser = interaction.options.getUser('member');
             if (!providedUser) providedUser = interaction.user;
 
-            await interaction.deferReply({ephemeral: !share});
+            await interaction.deferReply(replyOptions);
 
             // Get the GuildMember for this user
             const guild = await getGuild();

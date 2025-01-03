@@ -27,21 +27,21 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Start tracking member playtime for a major order deployment. Requires Freedom Captain.')
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
-            await interaction.deferReply({ephemeral: true});
+            await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             // 2. Obtain lock, start MOD if not already.
             const key = await DeploymentActivityLogger.transactionManager.lock();
             if (DeploymentActivityLogger.transactionManager.isDeploymentActive(key)) {
-                await interaction.followUp({content: `:x: Deployment is already underway.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Deployment is already underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
                 await DeploymentActivityLogger.transactionManager.startDeployment(key);
-                await interaction.followUp({content: `:white_check_mark: Deployment started!`, ephemeral: true});
+                await interaction.followUp({content: `:white_check_mark: Deployment started!`, flags: Discord.MessageFlags.Ephemeral});
                 Logger.logToChannel(`Deployment started by <@${interaction.user.id}>.`);
             }
             await DeploymentActivityLogger.transactionManager.unlock(key);
@@ -53,21 +53,21 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Stop tracking member playtime for a major order deployment. Requires Freedom Captain.')
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
-            await interaction.deferReply({ephemeral: true});
+            await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             // 2. Obtain lock, end MOD if not already.
             const key = await DeploymentActivityLogger.transactionManager.lock();
             if (!DeploymentActivityLogger.transactionManager.isDeploymentActive(key)) {
-                await interaction.followUp({content: `:x: Deployment is not underway.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Deployment is not underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
                 DeploymentActivityLogger.transactionManager.endDeployment(key);
-                await interaction.followUp({content: `:white_check_mark: Deployment ended.`, ephemeral: true});
+                await interaction.followUp({content: `:white_check_mark: Deployment ended.`, flags: Discord.MessageFlags.Ephemeral});
                 Logger.logToChannel(`Deployment ended by <@${interaction.user.id}>. Generating participants list for carnage report...\n` +
                     `(Only members with at least ${Luxon.Duration.fromMillis(DeploymentActivityLogger.MINIMUM_TIME_TO_QUALIFY).as('minutes')} minutes of play time will be listed).`
                 );
@@ -98,7 +98,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({ephemeral: !share});
 
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -108,7 +108,7 @@ const commands: {[key: string]: ICommand} = {
 
             const member = await guild.members.fetch(providedUser.id);
             if (!member) {
-                await interaction.reply({content: `:x: Member not found.`, ephemeral: true});
+                await interaction.reply({content: `:x: Member not found.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -143,11 +143,11 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Generate the participants section of the carnage report based on deployment records.')
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
-            await interaction.deferReply({ephemeral: true});
+            await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -156,12 +156,12 @@ const commands: {[key: string]: ICommand} = {
 
             const messages = generateParticipantsMessages(DeploymentActivityLogger.transactionManager.getQualifiedMembers(key));
             for (let m of messages) {
-                await interaction.followUp({content: m, ephemeral: true});
+                await interaction.followUp({content: m, flags: Discord.MessageFlags.Ephemeral});
             }
 
             if (DeploymentActivityLogger.transactionManager.isDeploymentActive(key)) {
                 await interaction.followUp({content: `:warning: **Warning! Deployment is still ongoing, this list is subject to change!** ` +
-                    `If you want to end the deployment, use /end-deployment.`, ephemeral: true});
+                    `If you want to end the deployment, use /end-deployment.`, flags: Discord.MessageFlags.Ephemeral});
             }
 
             await DeploymentActivityLogger.transactionManager.unlock(key);
@@ -179,19 +179,19 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             const file = interaction.options.getString('file') || '';
             const validFiles = DeploymentActivityLogger.transactionManager.getLogFileNames();
             if (!validFiles.includes(file)) {
-                await interaction.reply({content: `:x: invalid file name "${file}"`, ephemeral: true});
+                await interaction.reply({content: `:x: invalid file name "${file}"`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             if (!interaction.channel || !interaction.channel.isSendable()) {
-                await interaction.reply({content: ':x: You must use this command in a text channel.', ephemeral: true});
+                await interaction.reply({content: ':x: You must use this command in a text channel.', flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -202,7 +202,7 @@ const commands: {[key: string]: ICommand} = {
                     attachment: DeploymentActivityLogger.transactionManager.getFullLogFilePath(file),
                     name: `${file}`
                 }],
-                ephemeral: true
+                flags: Discord.MessageFlags.Ephemeral
             });
         },
         async autocomplete(interaction) {

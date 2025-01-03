@@ -10,7 +10,7 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Replies with pong.'),
 
         async execute(interaction) {
-            await interaction.reply({content: 'Pong!', ephemeral: true});
+            await interaction.reply({content: 'Pong!', flags: Discord.MessageFlags.Ephemeral});
         }
     },
     week: {
@@ -70,7 +70,7 @@ const commands: {[key: string]: ICommand} = {
 
             const member = await guild.members.fetch(providedUser.id);
             if (!member) {
-                await interaction.reply({content: `:x: Member not found.`, ephemeral: true});
+                await interaction.reply({content: `:x: Member not found.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 

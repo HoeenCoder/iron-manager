@@ -19,7 +19,7 @@ const events: {[key: string]: IEvent} = {
 
             const command = commandRegistry.get(interaction.commandName);
             if (!command) {
-                await interaction.reply({content: ':x: Command not found.', ephemeral: true});
+                await interaction.reply({content: ':x: Command not found.', flags: Discord.MessageFlags.Ephemeral});
                 Logger.logError(`Non-existant command called: ${interaction.commandName}`);
                 return;
             }
@@ -30,10 +30,10 @@ const events: {[key: string]: IEvent} = {
                 Logger.logError(e as Error);
                 if (interaction.replied || interaction.deferred) {
                     await interaction.followUp({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
-                        ephemeral: true});
+                        flags: Discord.MessageFlags.Ephemeral});
                 } else {
                     await interaction.reply({content: `:x: An error occured while executing your command, this has been logged and will be fixed later.`,
-                        ephemeral: true});
+                        flags: Discord.MessageFlags.Ephemeral});
                 }
             }
         }
@@ -81,10 +81,10 @@ const events: {[key: string]: IEvent} = {
             } catch (e) {
                 if (interaction.replied || interaction.deferred) {
                     await interaction.followUp({content: `:x: An error occured while processing your request, this has been logged and will be fixed later.`,
-                        ephemeral: true});
+                        flags: Discord.MessageFlags.Ephemeral});
                 } else {
                     await interaction.reply({content: `:x: An error occured while processing your request, this has been logged and will be fixed later.`,
-                        ephemeral: true});
+                        flags: Discord.MessageFlags.Ephemeral});
                 }
                 Logger.logError(e as Error);
             }

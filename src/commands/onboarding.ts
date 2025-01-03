@@ -121,7 +121,7 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
         await interaction.followUp({
             content: `Could not find applicant to approve, did they leave the server?\n\n` +
                 `You can delete this application with the "Delete Application" button.`,
-            ephemeral: true
+            flags: Discord.MessageFlags.Ephemeral
         });
         return;
     }
@@ -131,7 +131,7 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
         await interaction.followUp({
             content: `Applicant does not have the role(s) new recruits have, maybe they were already approved or rejected?\n\n` +
                 `You can delete this application with the "Delete Application" button.`,
-            ephemeral: true,
+            flags: Discord.MessageFlags.Ephemeral,
         });
         return;
     }
@@ -260,7 +260,7 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.Administrator),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires High Command permissions.`, ephemeral: true});
+                await interaction.reply({content: `:x: Access Denied. Requires High Command permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -271,7 +271,7 @@ const commands: {[key: string]: ICommand} = {
 
             const onboardingChannel = await guild.channels.fetch(Config.onboarding_forum_id);
             if (!onboardingChannel) {
-                await interaction.reply({content: `:x: Could not find onboarding report channel, please make sure its configured!`, ephemeral: true});
+                await interaction.reply({content: `:x: Could not find onboarding report channel, please make sure its configured!`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -357,7 +357,7 @@ const commands: {[key: string]: ICommand} = {
                     if (!applicant.roles.cache.hasAll(...Config.ranks[0].required)) {
                         await interaction.reply({
                             content: `:x: Only applicants can fill out an application form.`,
-                            ephemeral: true
+                            flags: Discord.MessageFlags.Ephemeral
                         });
                         return;
                     }
@@ -370,7 +370,7 @@ const commands: {[key: string]: ICommand} = {
                         await interaction.reply({
                             content: `:x: You already have a pending application open. ` +
                                 `Feel free to reach out to us if you have any questions or concerns.`,
-                            ephemeral: true,
+                            flags: Discord.MessageFlags.Ephemeral,
                         });
                         return;
                     }
@@ -425,7 +425,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     OnboardingLogger.logCreation(applicant, platform, name, hasMic, continent, ageCheck);
-                    await interaction.reply({content: `:white_check_mark: Your application was received and is under review!`, ephemeral: true});
+                    await interaction.reply({content: `:white_check_mark: Your application was received and is under review!`, flags: Discord.MessageFlags.Ephemeral});
                 }
             },
             'onboarding-applicant-approve': {
@@ -439,7 +439,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -457,7 +457,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -472,7 +472,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -490,7 +490,7 @@ const commands: {[key: string]: ICommand} = {
                     } catch (e) {
                         await interaction.reply({
                             content: `Could not find applicant to reject, did they leave the server?`,
-                            ephemeral: true
+                            flags: Discord.MessageFlags.Ephemeral
                         });
                         return;
                     }
@@ -500,7 +500,7 @@ const commands: {[key: string]: ICommand} = {
                         await interaction.reply({
                             content: `Applicant does not have the role(s) new recruits have, maybe they were already approved or rejected?\n\n` +
                                 `You can delete this application with the "Delete Application" button.`,
-                            ephemeral: true,
+                            flags: Discord.MessageFlags.Ephemeral,
                         });
                         return;
                     }
@@ -530,7 +530,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -615,7 +615,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -644,11 +644,11 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
-                    await interaction.deferReply({ephemeral: true});
+                    await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
                     const embedMessageId = flagTable[interaction.user.id];
                     const reason = interaction.fields.getTextInputValue('onboarding-flag-reason') || 'No reason provided';
 
@@ -708,7 +708,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -747,10 +747,10 @@ const commands: {[key: string]: ICommand} = {
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
-                    await interaction.deferReply({ephemeral: true});
+                    await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -765,7 +765,7 @@ const commands: {[key: string]: ICommand} = {
                     OnboardingLogger.logClose(userId, interaction.member as Discord.GuildMember);
                     await interaction.followUp({content: `:white_check_mark: Application Closed. ` +
                         `The applicant was NOT notified of this or kicked. **Please make sure to tell them what to do next.**`,
-                        ephemeral: true
+                        flags: Discord.MessageFlags.Ephemeral
                     });
                 }
             },
@@ -777,13 +777,13 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
                     // Delete the message
                     await interaction.message.delete();
-                    await interaction.reply({content: `:white_check_mark: Problem Report Deleted.`, ephemeral: true});
+                    await interaction.reply({content: `:white_check_mark: Problem Report Deleted.`, flags: Discord.MessageFlags.Ephemeral});
                 },
             }
         }
@@ -800,19 +800,19 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             const file = interaction.options.getString('file') || '';
             const validFiles = OnboardingLogger.getValidFileNames();
             if (!validFiles.includes(file)) {
-                await interaction.reply({content: `:x: invalid file name "${file}"`, ephemeral: true});
+                await interaction.reply({content: `:x: invalid file name "${file}"`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             if (!interaction.channel || !interaction.channel.isSendable()) {
-                await interaction.reply({content: ':x: You must use this command in a text channel.', ephemeral: true});
+                await interaction.reply({content: ':x: You must use this command in a text channel.', flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -823,7 +823,7 @@ const commands: {[key: string]: ICommand} = {
                     attachment: OnboardingLogger.getFullLogFilePath(file),
                     name: `${file}`
                 }],
-                ephemeral: true
+                flags: Discord.MessageFlags.Ephemeral
             });
         },
         async autocomplete(interaction) {
@@ -855,14 +855,14 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             const input = interaction.options.getString('members', true);
             const matches = [...(input || '').matchAll(/<@([0-9]+)>/g)].map(v => v[1]);
             if (!input || !matches || !matches.length) {
-                await interaction.reply({content: `:x: No members provided.`, ephemeral: true});
+                await interaction.reply({content: `:x: No members provided.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 

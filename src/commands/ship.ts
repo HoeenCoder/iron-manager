@@ -84,7 +84,7 @@ const commands: {[key: string]: ICommand} = {
                     .setRequired(true)
                     .setAutocomplete(true)),
         async execute(interaction) {
-            await interaction.deferReply({ephemeral: true});
+            await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. Validation
             const ownerIds = Object.values(CHANNEL_OWNERS);

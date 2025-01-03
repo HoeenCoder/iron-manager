@@ -758,6 +758,16 @@ const commands: {[key: string]: ICommand} = {
                     const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
                     const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
 
+                    const field = appEmbed.fields.find(f => f.name === 'Application Status');
+                    if (field) {
+                        field.value = `Closed by <@${interaction.user.id}>`;
+                    }
+
+                    interaction.message.edit({
+                        embeds: [appEmbed],
+                        components: []
+                    });
+
                     // Close the application
                     if (interaction.channel?.isThread()) {
                         await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "closed");

@@ -3,22 +3,32 @@
     "log_channel_id": "",
     "thumbnail_icon_url": "",
     "voice_category_id": "",
-    "onboarding_channel_id": "",
+    "onboarding_forum_id": "",
     "permissions": {
         "all": [],
         "deploy": [],
         "iron": [],
         "onboard": []
     },
-    "onboardingRoles": {
-        "steam": "",
-        "playstation": "",
-        "northAmerica": "",
-        "southAmerica": "",
-        "europe": "",
-        "oceania": "",
-        "asia": "",
-        "africa": ""
+    "onboarding": {
+        "roles": {
+            "steam": "",
+            "playstation": "",
+            "northAmerica": "",
+            "southAmerica": "",
+            "europe": "",
+            "oceania": "",
+            "asia": "",
+            "africa": "",
+            "envoy": ""
+        },
+        "tags": {
+            "pending": "",
+            "approved": "",
+            "rejected": "",
+            "flagged": "",
+            "closed": ""
+        }
     },
     "ranks": {
         "0": {

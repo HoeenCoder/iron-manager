@@ -1,6 +1,6 @@
 import * as Discord from "discord.js";
-import { ICommand, roleBasedPermissionCheck, Config, getGuild } from "../common";
-import { Logger } from '../logger';
+import { ICommand, roleBasedPermissionCheck, IConfig, Config, getGuild } from "../common";
+import { Logger, OnboardingLogger } from '../logger';
 import { createUsername, tryPromotion } from "../iron-manager";
 
 // rejectorId -> [rejecteeId, applicationMessageId]
@@ -19,13 +19,238 @@ const onboardingButtonRow = new Discord.ActionRowBuilder<Discord.ButtonBuilder>(
             .setLabel('Reject')
             .setStyle(Discord.ButtonStyle.Danger),
         new Discord.ButtonBuilder()
+            .setCustomId('onboarding-applicant-envoy')
+            .setLabel('Approve as Envoy')
+            .setStyle(Discord.ButtonStyle.Primary),
+        new Discord.ButtonBuilder()
             .setCustomId('onboarding-applicant-flag')
             .setLabel('Flag for Review')
-            .setStyle(Discord.ButtonStyle.Danger),
+            .setStyle(Discord.ButtonStyle.Secondary),
         new Discord.ButtonBuilder()
-            .setCustomId('onboarding-applicant-delete')
-            .setLabel('Delete Application')
+            .setCustomId('onboarding-applicant-close')
+            .setLabel('Close Without Approving or Rejecting')
             .setStyle(Discord.ButtonStyle.Secondary));
+
+/**
+ * Get the forum channel where applications are posted.
+ * @returns Forum channel where applications are posted.
+ */
+async function getApplicationForum(): Promise<Discord.ForumChannel> {
+    const guild = await getGuild();
+    if (!guild) {
+        throw new Error(`Guild not found!`);
+    }
+
+    const onboardingChannel = await guild.channels.fetch(Config.onboarding_forum_id);
+    if (!onboardingChannel || !(onboardingChannel instanceof Discord.ForumChannel)) {
+        Logger.logToChannel(`Onboarding submission received but no sendable onboarding forum is configured! Please configure the onboarding forum!`);
+        throw new Error(`Onboarding forum not found!`);
+    }
+
+    return onboardingChannel;
+}
+
+/**
+ * Get a forum thread for an applicatant.
+ * @param member the member to get a thread for.
+ * @returns the application thread for this member, or null if none exists.
+ */
+async function getApplicantThread(member: Discord.GuildMember): Promise<Discord.ForumThreadChannel | null> {
+    const onboardingChannel = await getApplicationForum();
+
+    const threadPools = [
+        (await onboardingChannel.threads.fetchActive()).threads,
+        (await onboardingChannel.threads.fetchArchived()).threads
+    ];
+
+    for (const pool of threadPools) {
+        for (const [id, t] of pool) {
+            // Safe cast, were working with a forum
+            const thread = (t as Discord.ForumThreadChannel);
+            if (!thread.name.startsWith(`[${member.id}]`))
+                continue;
+
+            // Thread found!
+            return thread;
+        }
+    }
+
+    // No channel found
+    return null;
+}
+
+/**
+ * Updates a thread's tag and archive status based on tag.
+ * @param thread The thread to update the tag for.
+ * @param tag A valid tag to apply.
+ */
+async function setThreadTag(thread: Discord.ForumThreadChannel, tag: keyof IConfig["onboarding"]["tags"]) {
+    if (["pending", "flagged"].includes(tag)) {
+        // Ensure active
+        await thread.setArchived(false);
+        await thread.setAppliedTags([Config.onboarding.tags[tag]]);
+    } else {
+        if (thread.archived) {
+            // Should be very rare, but is possible. Just un-archive it first.
+            await thread.setArchived(false);
+        }
+        await thread.setAppliedTags([Config.onboarding.tags[tag]]);
+        await thread.setArchived(true);
+    }
+}
+
+/**
+ * Approve an application. Most logic is used in multiple places and therefore is split out to this method.
+ * @param interaction The ButtonIntercation triggering the approval.
+ * @param rankCategory The category to assign the user to.
+ */
+async function approveApplicant(interaction: Discord.ButtonInteraction, rankCategory: '0' | 'E') {
+    // 1. Validation
+    const guild = await getGuild();
+    if (!guild) {
+        throw new Error(`Guild not found!`);
+    }
+
+    const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
+    const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
+    let applicant: Discord.GuildMember;
+
+    try {
+        applicant = await guild.members.fetch(userId);
+    } catch (e) {
+        await interaction.followUp({
+            content: `Could not find applicant to approve, did they leave the server?\n\n` +
+                `You can delete this application with the "Delete Application" button.`,
+            ephemeral: true
+        });
+        return;
+    }
+
+    // Ensure applicant wasn't already approved/rejected.
+    if (!applicant.roles.cache.hasAny(...Config.ranks[rankCategory].required)) {
+        await interaction.followUp({
+            content: `Applicant does not have the role(s) new recruits have, maybe they were already approved or rejected?\n\n` +
+                `You can delete this application with the "Delete Application" button.`,
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const ingameName = interaction.message.embeds[0].fields.find(f => f.name === 'In-Game Name')?.value || '';
+    if (!ingameName) {
+        throw new Error(`When onboarding, could not find applicant's in-game name!`);
+    }
+
+    const dataSets: {category: string, userInput: string, matchers: {[key: string]: RegExp}}[] = [
+        {
+            category: 'Platform',
+            userInput: interaction.message.embeds[0].fields.find(f => f.name === 'Platform')?.value || '',
+            matchers: {
+                'playstation': /(?:ps(?:4|5)?(?: pro)?|playstation)/i,
+                'steam': /(?:pc|steam(?: ?deck)?)/i
+            }
+        },
+        {
+            category: 'Continent',
+            userInput: interaction.message.embeds[0].fields.find(f => f.name === 'Continent')?.value || '',
+            matchers: {
+                'northAmerica': /(?:north ?america|na)/i,
+                'southAmerica': /(?:south ?america|sa)/i,
+                'europe': /(?:europe|eu)/i,
+                'oceania': /(?:oceania|oc|australia|aus)/i,
+                'asia': /(?:asia|as)/i,
+                'africa': /(?:africa|af)/i
+                //'antartica': /(?:antartica|an)/i
+            }
+        }
+    ];
+
+    const problemEmbed = new Discord.EmbedBuilder()
+        .setColor(0x6c1313)
+        .setTitle(`Onboarding Problems`)
+        .setDescription(`Please manually assign roles for these categories to this user.`)
+        .addFields(
+            {name: `Account`, value: userMention}
+        ).setTimestamp()
+        .setFooter({text: `When fixed, click the button below this message to dismiss this message.`});
+
+    if (Config.thumbnail_icon_url) problemEmbed.setThumbnail(Config.thumbnail_icon_url);
+
+    // Role validation
+    const newRoles: Discord.Role[] = [];
+
+    for (let dataSet of dataSets) {
+        const userInput = dataSet.userInput;
+        const roleSet = dataSet.matchers;
+        let roleId: string | undefined = '';
+        for (let key in roleSet) {
+            if (userInput.match(roleSet[key])) {
+                roleId = key;
+                break;
+            }
+        }
+
+        if (!roleId || !applicant.manageable) {
+            problemEmbed.addFields({name: dataSet.category, value: userInput});
+        } else {
+            if (!Config.onboarding.roles[roleId]) {
+                throw new Error(`Onboarding role for ${roleId} not configured!`);
+            }
+            const role = await guild.roles.fetch(Config.onboarding.roles[roleId]);
+            if (!role || !role.editable) {
+                throw new Error(`Onboarding role for ${roleId} not found or the bot cannot assign it!`);
+            }
+            newRoles.push(role);
+        }
+    }
+
+    // 2. Assign roles, update name
+    const username = createUsername(0, ingameName);
+    if (applicant.manageable) {
+        await applicant.setNickname(username);
+    } else {
+        problemEmbed.addFields({name: 'Set Nickname To', value: username});
+    }
+
+    await applicant.roles.add(newRoles);
+
+    if (await tryPromotion(applicant, rankCategory)) {
+        problemEmbed.addFields({name: 'Update Standard Roles',
+            value: `Add: ${Config.ranks[0].add.map(r => `<@&${r}>`)}, Remove: ${Config.ranks[0].remove.map(r => `<@&${r}>`)}`});
+    }
+
+    const appEmbed = interaction.message.embeds[0];
+    const field = appEmbed.fields.find(f => f.name === 'Application Status');
+    if (field) {
+        field.value = `Approved${rankCategory === 'E' ? ' (as envoy)' : ''} by <@${interaction.user.id}>`;
+    }
+
+    // Update embed, post new message if needed
+    await interaction.editReply({
+        embeds: [appEmbed],
+        components: []
+    });
+
+    if (problemEmbed.data.fields && problemEmbed.data.fields.length > 1) {
+        const buttonRow = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
+            .addComponents(
+                new Discord.ButtonBuilder()
+                    .setCustomId('onboarding-problems-addressed')
+                    .setLabel('Problems Fixed, Dismiss Message')
+                    .setStyle(Discord.ButtonStyle.Primary)
+            )
+
+        await interaction.followUp({
+            embeds: [problemEmbed],
+            components: [buttonRow]
+        });
+    }
+
+    OnboardingLogger.logApproval(applicant, interaction.member as Discord.GuildMember);
+    if (interaction.channel?.isThread()) {
+        await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "approved");
+    }
+}
 
 const commands: {[key: string]: ICommand} = {
     'post-onboarding-message': {
@@ -44,7 +269,7 @@ const commands: {[key: string]: ICommand} = {
                 throw new Error(`Guild not found!`);
             }
 
-            const onboardingChannel = await guild.channels.fetch(Config.onboarding_channel_id);
+            const onboardingChannel = await guild.channels.fetch(Config.onboarding_forum_id);
             if (!onboardingChannel) {
                 await interaction.reply({content: `:x: Could not find onboarding report channel, please make sure its configured!`, ephemeral: true});
                 return;
@@ -122,17 +347,6 @@ const commands: {[key: string]: ICommand} = {
                         throw new Error(`Onboarding Submission: expected modal submission, got ${interaction.componentType}`);
                     }
 
-                    const guild = await getGuild();
-                    if (!guild) {
-                        throw new Error(`Guild not found!`);
-                    }
-
-                    const onboardingChannel = await guild.channels.fetch(Config.onboarding_channel_id);
-                    if (!onboardingChannel || !onboardingChannel.isSendable()) {
-                        Logger.logToChannel(`Onboarding submission received but no sendable onboarding channel is configured! Please configure the onboarding channel!`);
-                        throw new Error(`Onboarding channel not found!`);
-                    }
-
                     // Validate user is an applicant
                     if (!interaction.member || !(interaction.member instanceof Discord.GuildMember)) {
                         // Should never happen...
@@ -144,6 +358,19 @@ const commands: {[key: string]: ICommand} = {
                         await interaction.reply({
                             content: `:x: Only applicants can fill out an application form.`,
                             ephemeral: true
+                        });
+                        return;
+                    }
+
+                    // Make sure user doesn't have a pending application
+                    let thread = await getApplicantThread(applicant);
+                    if (thread && 
+                        (thread.appliedTags.includes(Config.onboarding.tags.pending) ||
+                        thread.appliedTags.includes(Config.onboarding.tags.flagged))) {
+                        await interaction.reply({
+                            content: `:x: You already have a pending application open. ` +
+                                `Feel free to reach out to us if you have any questions or concerns.`,
+                            ephemeral: true,
                         });
                         return;
                     }
@@ -174,8 +401,30 @@ const commands: {[key: string]: ICommand} = {
 
                     if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-                    await onboardingChannel.send({embeds: [embed], components: [onboardingButtonRow]});
+                    // 2. Get thread and post, or post a new thread.
+                    if (!thread) {
+                        // New thread
+                        const onboardingChannel = await getApplicationForum();
+                        thread = await onboardingChannel.threads.create({
+                            name: `[${applicant.id}] ${applicant.displayName}`,
+                            autoArchiveDuration: Discord.ThreadAutoArchiveDuration.OneWeek,
+                            message: {
+                                embeds: [embed],
+                                components: [onboardingButtonRow]
+                            }
+                        });
+                        await setThreadTag(thread, "pending");
+                    } else {
+                        // Post to existing
+                        await setThreadTag(thread, "pending");
+                        thread.setName(`[${applicant.id}] ${applicant.displayName}`);
+                        thread.send({
+                            embeds: [embed],
+                            components: [onboardingButtonRow],
+                        });
+                    }
 
+                    OnboardingLogger.logCreation(applicant, platform, name, hasMic, continent, ageCheck);
                     await interaction.reply({content: `:white_check_mark: Your application was received and is under review!`, ephemeral: true});
                 }
             },
@@ -194,147 +443,26 @@ const commands: {[key: string]: ICommand} = {
                         return;
                     }
 
-                    // 1. Validation
-                    const guild = await getGuild();
-                    if (!guild) {
-                        throw new Error(`Guild not found!`);
-                    }
-
-                    const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
-                    const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
-                    let applicant: Discord.GuildMember;
-
-                    try {
-                        applicant = await guild.members.fetch(userId);
-                    } catch (e) {
-                        await interaction.followUp({
-                            content: `Could not find applicant to approve, did they leave the server?\n\n` +
-                                `You can delete this application with the "Delete Application" button.`,
-                            ephemeral: true
-                        });
-                        return;
-                    }
-
-                    // Ensure applicant wasn't already approved/rejected.
-                    if (!applicant.roles.cache.hasAny(...Config.ranks['0'].required)) {
-                        await interaction.followUp({
-                            content: `Applicant does not have the role(s) new recruits have, maybe they were already approved or rejected?\n\n` +
-                                `You can delete this application with the "Delete Application" button.`,
-                            ephemeral: true,
-                        });
-                        return;
-                    }
-
-                    const ingameName = interaction.message.embeds[0].fields.find(f => f.name === 'In-Game Name')?.value || '';
-                    if (!ingameName) {
-                        throw new Error(`When onboarding, could not find applicant's in-game name!`);
-                    }
-
-                    const dataSets: {category: string, userInput: string, matchers: {[key: string]: RegExp}}[] = [
-                        {
-                            category: 'Platform',
-                            userInput: interaction.message.embeds[0].fields.find(f => f.name === 'Platform')?.value || '',
-                            matchers: {
-                                'playstation': /(?:ps(?:4|5)?(?: pro)?|playstation)/i,
-                                'steam': /(?:pc|steam(?: ?deck)?)/i
-                            }
-                        },
-                        {
-                            category: 'Continent',
-                            userInput: interaction.message.embeds[0].fields.find(f => f.name === 'Continent')?.value || '',
-                            matchers: {
-                                'northAmerica': /(?:north ?america|na)/i,
-                                'southAmerica': /(?:south ?america|sa)/i,
-                                'europe': /(?:europe|eu)/i,
-                                'oceania': /(?:oceania|oc|australia|aus)/i,
-                                'asia': /(?:asia|as)/i,
-                                'africa': /(?:africa|af)/i
-                                //'antartica': /(?:antartica|an)/i
-                            }
-                        }
-                    ];
-
-                    const problemEmbed = new Discord.EmbedBuilder()
-                        .setColor(0x6c1313)
-                        .setTitle(`Onboarding Problems`)
-                        .setDescription(`Please manually assign roles for these categories to this user.`)
-                        .addFields(
-                            {name: `Account`, value: userMention}
-                        ).setTimestamp()
-                        .setFooter({text: `When fixed, click the button below this message to dismiss this message.`});
-
-                    if (Config.thumbnail_icon_url) problemEmbed.setThumbnail(Config.thumbnail_icon_url);
-
-                    // Role validation
-                    const newRoles: Discord.Role[] = [];
-
-                    for (let dataSet of dataSets) {
-                        const userInput = dataSet.userInput;
-                        const roleSet = dataSet.matchers;
-                        let roleId: string | undefined = '';
-                        for (let key in roleSet) {
-                            if (userInput.match(roleSet[key])) {
-                                roleId = key;
-                                break;
-                            }
-                        }
-
-                        if (!roleId || !applicant.manageable) {
-                            problemEmbed.addFields({name: dataSet.category, value: userInput});
-                        } else {
-                            if (!Config.onboardingRoles[roleId]) {
-                                throw new Error(`Onboarding role for ${roleId} not configured!`);
-                            }
-                            const role = await guild.roles.fetch(Config.onboardingRoles[roleId]);
-                            if (!role || !role.editable) {
-                                throw new Error(`Onboarding role for ${roleId} not found or the bot cannot assign it!`);
-                            }
-                            newRoles.push(role);
-                        }
-                    }
-
-                    // 2. Assign roles, update name
-                    const username = createUsername(0, ingameName);
-                    if (applicant.manageable) {
-                        await applicant.setNickname(username);
-                    } else {
-                        problemEmbed.addFields({name: 'Set Nickname To', value: username});
-                    }
-
-                    await applicant.roles.add(newRoles);
-
-                    if (await tryPromotion(applicant, '0')) {
-                        problemEmbed.addFields({name: 'Update Standard Roles',
-                            value: `Add: ${Config.ranks[0].add.map(r => `<@&${r}>`)}, Remove: ${Config.ranks[0].remove.map(r => `<@&${r}>`)}`});
-                    }
-
-                    const appEmbed = interaction.message.embeds[0];
-                    const field = appEmbed.fields.find(f => f.name === 'Application Status');
-                    if (field) {
-                        field.value = `Approved by <@${interaction.user.id}>`;
-                    }
-
-                    // Update embed, post new message if needed
-                    await interaction.editReply({
-                        embeds: [appEmbed],
-                        components: []
-                    });
-
-                    if (problemEmbed.data.fields && problemEmbed.data.fields.length > 1) {
-                        const buttonRow = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
-                            .addComponents(
-                                new Discord.ButtonBuilder()
-                                    .setCustomId('onboarding-problems-addressed')
-                                    .setLabel('Problems Fixed, Dismiss Message')
-                                    .setStyle(Discord.ButtonStyle.Primary)
-                            )
-
-                        await interaction.followUp({
-                            embeds: [problemEmbed],
-                            components: [buttonRow]
-                        });
-                    }
+                    approveApplicant(interaction, '0');
                 },
+            },
+            'onboarding-applicant-envoy': {
+                async execute(interaction) {
+                    await interaction.deferUpdate();
+
+                    // 0. Permission checks
+                    if (!interaction.isButton()) {
+                        throw new Error(`Onboarding: expected button, got ${interaction.isModalSubmit() ?
+                            'Modal Submission' : interaction.componentType}.`);
+                    }
+
+                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        return;
+                    }
+
+                    approveApplicant(interaction, 'E');
+                }
             },
             'onboarding-applicant-reject': {
                 async execute(interaction) {
@@ -472,6 +600,11 @@ const commands: {[key: string]: ICommand} = {
                     } else {
                         await interaction.followUp(`Attempted to kick rejected applicant <@${applicant.id}>, but could not. Please manually remove them from the server.`);
                     }
+
+                    if (interaction.channel?.isThread()) {
+                        await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "rejected");
+                    }
+                    OnboardingLogger.logRejection(applicant, interaction.member as Discord.GuildMember, reason);
                 },
             },
             'onboarding-applicant-flag': {
@@ -533,6 +666,17 @@ const commands: {[key: string]: ICommand} = {
                             field.value = reason.slice(0, 1024);
                         }
 
+                        field = appEmbed.fields.find(f => f.name === 'Account');
+                        let applicantId = '';
+                        if (field) {
+                            const match = /<@([0-9]+)>/.exec(field.value)
+                            if (match) {
+                                applicantId = match[1];
+                            } else {
+                                throw new Error(`Malformed application when setting flag.`);
+                            }
+                        }
+
                         const button = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
                             .addComponents(
                                 new Discord.ButtonBuilder()
@@ -546,6 +690,10 @@ const commands: {[key: string]: ICommand} = {
                             components: [button]
                         });
 
+                        if (interaction.channel.isThread()) {
+                            await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "flagged");
+                        }
+                        OnboardingLogger.logFlag(applicantId, interaction.member as Discord.GuildMember, reason);
                         await interaction.followUp(`:white_check_mark: Application flagged.`);
                     } else {
                         await interaction.followUp(`Unable to flag application, message not found.`);
@@ -585,24 +733,40 @@ const commands: {[key: string]: ICommand} = {
                         components: [onboardingButtonRow]
                     });
 
+                    if (interaction.channel?.isThread()) {
+                        await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "pending");
+                    }
+                    OnboardingLogger.logFlagCleared(userId, interaction.member as Discord.GuildMember);
                     await interaction.reply({content: `<@${interaction.user.id}> cleared the flag on <@${userId}>'s application.\nThe flag reason was:\n> ${reason}`});
                 },
             },
-            'onboarding-applicant-delete': {
+            'onboarding-applicant-close': {
                 async execute(interaction) {
                     if (!interaction.isButton()) {
                         throw new Error(`Onboarding: expected button, got ${interaction.isModalSubmit() ?
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
+                    await interaction.deferReply({ephemeral: true});
+
                     if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                        await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
                         return;
                     }
 
-                    // Delete the message
-                    await interaction.message.delete();
-                    await interaction.reply({content: `:white_check_mark: Application Deleted.`, ephemeral: true});
+                    const appEmbed = interaction.message.embeds[0];
+                    const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
+                    const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
+
+                    // Close the application
+                    if (interaction.channel?.isThread()) {
+                        await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "closed");
+                    }
+                    OnboardingLogger.logClose(userId, interaction.member as Discord.GuildMember);
+                    await interaction.followUp({content: `:white_check_mark: Application Closed. ` +
+                        `The applicant was NOT notified of this or kicked. **Please make sure to tell them what to do next.**`,
+                        ephemeral: true
+                    });
                 }
             },
             'onboarding-problems-addressed': {
@@ -622,6 +786,62 @@ const commands: {[key: string]: ICommand} = {
                     await interaction.reply({content: `:white_check_mark: Problem Report Deleted.`, ephemeral: true});
                 },
             }
+        }
+    },
+    'get-application-logs': {
+        data: new Discord.SlashCommandBuilder()
+            .setName('get-application-logs')
+            .setDescription('Get logs for past applications to join.')
+            .addStringOption(o =>
+                o.setName('file')
+                    .setDescription('Logs names are the user ID of the applicant.')
+                    .setRequired(true)
+                    .setAutocomplete(true))
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+        async execute(interaction) {
+            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                return;
+            }
+
+            const file = interaction.options.getString('file') || '';
+            const validFiles = OnboardingLogger.getValidFileNames();
+            if (!validFiles.includes(file)) {
+                await interaction.reply({content: `:x: invalid file name "${file}"`, ephemeral: true});
+                return;
+            }
+
+            if (!interaction.channel || !interaction.channel.isSendable()) {
+                await interaction.reply({content: ':x: You must use this command in a text channel.', ephemeral: true});
+                return;
+            }
+
+            // send file
+            await interaction.reply({
+                content: `Application log file attached.`,
+                files: [{
+                    attachment: OnboardingLogger.getFullLogFilePath(file),
+                    name: `${file}`
+                }],
+                ephemeral: true
+            });
+        },
+        async autocomplete(interaction) {
+            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                // Those who do not have permission do not see the options.
+                await interaction.respond([]);
+                return;
+            }
+
+            const focusedOption = interaction.options.getFocused(true);
+
+            const options = OnboardingLogger.getValidFileNames()
+                .filter(f => f.startsWith(focusedOption.value))
+                .map(v => {
+                    return {name: v, value: v};
+                });
+
+            await interaction.respond(options.slice(0, 24));
         }
     },
     'welcome': {
@@ -653,7 +873,8 @@ const commands: {[key: string]: ICommand} = {
                     `Play in MODs to earn IRON (the number next to your name), you can earn 1 IRON per week from playing in MODs.\n\n` +
                     `You are also welcomed and encouraged to dive with others whenever you like. You can ping the ON CALL role in <#1289960010801221692>. ` +
                     `If you want that role yourself, get it from <#1244035446439280711>.\n\n` +
-                    `Let us know if you have any questions.`
+                    `If you have any questions, feel free to open a ticket here <#1302076162935230563> if you need to speak with the command team. ` +
+                    `Alternatively, you can ask in <#1227465911062233118> for simple questions that anyone can answer.`
             });
         }
     }

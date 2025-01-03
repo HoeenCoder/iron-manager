@@ -6,6 +6,10 @@ import crypto = require('crypto');
 
 const LOCK_TIMEOUT = 1000 * 60; // 1 minute
 
+function generateLogTimestamp() {
+    return Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS).replace(' ', ' ');
+}
+
 /**
  * Prevents race conditions when accessing data
  */
@@ -511,23 +515,70 @@ export namespace DeploymentActivityLogger {
         }
 
         private appendLogFile(memberId: string, join: boolean, totalTime: number) {
-            const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS).replace(' ', ' ');
             const type = join ? 'JOIN' : 'LEAVE';
             const duration = Luxon.Duration.fromMillis(totalTime).rescale().toHuman({unitDisplay: "short"});
 
             fs.appendFileSync(`${this.logDirLoc}/${this.activityRecords.started}.log`,
-                `${timestamp}: ${type} ${memberId}. Active Time: ${duration || '0 ms'}.\n`,
+                `${generateLogTimestamp()}: ${type} ${memberId}. Active Time: ${duration || '0 ms'}.\n`,
                 {encoding: 'utf-8'});
         }
 
         private appendSpecialLog(msg: string) {
-            const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS).replace(' ', ' ');
             fs.appendFileSync(`${this.logDirLoc}/${this.activityRecords.started}.log`,
-                `${timestamp}: ${msg}\n`, {encoding: 'utf-8'});
+                `${generateLogTimestamp()}: ${msg}\n`, {encoding: 'utf-8'});
         }
     }
 
     export const transactionManager = new DeploymentActivityLock();
+}
+
+/**
+ * For logging onboarding applications
+ */
+export namespace OnboardingLogger {
+    const logDirLoc = `${__dirname}/../storage/onboarding-logs`;
+    export function logCreation(applicant: Discord.User | Discord.GuildMember, platform: string, ign: string,
+        hasMic: string, continent: string, is16Plus: string) {
+        writeLogFile(applicant.id, `APPLICATION CREATED. IGN: ${ign}, Platform: ${platform}, ` +
+            `Has Mic: ${hasMic}, Continent: ${continent}, Confirmed 16+: ${is16Plus}.`);
+    }
+
+    export function logApproval(applicant: Discord.User | Discord.GuildMember, approver: Discord.GuildMember) {
+        writeLogFile(applicant.id, `APPLICATION APPROVED by ${approver.displayName} (${approver.id})`);
+    }
+
+    export function logRejection(applicant: Discord.User | Discord.GuildMember, rejector: Discord.GuildMember, reason: string) {
+        writeLogFile(applicant.id, `APPLICATION REJECTED by ${rejector.displayName} (${rejector.id}). Reason: ${reason.replace('\n', ' ')}`);
+    }
+
+    export function logFlag(applicantId: string, flagger: Discord.GuildMember, reason: string) {
+        writeLogFile(applicantId, `APPLICATION FLAGGED by ${flagger.displayName} (${flagger.id}). Reason: ${reason.replace('\n', ' ')}`);
+    }
+
+    export function logFlagCleared(applicantId: string, flagger: Discord.GuildMember) {
+        writeLogFile(applicantId, `APPLICATION FLAG_CLEARED by ${flagger.displayName} (${flagger.id}).`);
+    }
+
+    export function logClose(applicantId: string, closer: Discord.GuildMember) {
+        writeLogFile(applicantId, `APPLICATION CLOSED by ${closer.displayName} (${closer.id}).`);
+    }
+
+    function writeLogFile(memberId: string, message: string) {
+        if (!fs.existsSync(logDirLoc)) {
+            fs.mkdirSync(logDirLoc);
+        }
+
+        fs.appendFileSync(`${logDirLoc}/${memberId}.log`, `${generateLogTimestamp()}: ${message}\n`, {encoding: 'utf-8'});
+    }
+
+    export function getValidFileNames() {
+        return fs.readdirSync(logDirLoc, {encoding: 'utf-8'})
+                .filter(f => f.endsWith('.log'));
+    }
+
+    export function getFullLogFilePath(name: string): string {
+        return `${logDirLoc}/${name}`;
+    }
 }
 
 /**
@@ -541,13 +592,11 @@ export namespace Logger {
         }
 
         console.error(e);
-        const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS);
-        fs.appendFileSync(`${__dirname}/../storage/${getFileName('errors')}.log`, `${timestamp}: ${errorText}\n\n`, {encoding: 'utf-8'});
+        fs.appendFileSync(`${__dirname}/../storage/${getFileName('errors')}.log`, `${generateLogTimestamp()}: ${errorText}\n\n`, {encoding: 'utf-8'});
     }
 
     export async function logToChannel(msg: string) {
-        const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS);
-        fs.appendFileSync(`${__dirname}/../storage/${getFileName('notices')}.log`, `${timestamp}: ${msg}\n\n`, {encoding: 'utf-8'});
+        fs.appendFileSync(`${__dirname}/../storage/${getFileName('notices')}.log`, `${generateLogTimestamp()}: ${msg}\n\n`, {encoding: 'utf-8'});
 
         const guild = await getGuild();
         if (!guild) return; // weird...
@@ -559,8 +608,7 @@ export namespace Logger {
     }
 
     export async function logEmbedToChannel(embed: Discord.EmbedBuilder) {
-        const timestamp = Luxon.DateTime.utc().toLocaleString(Luxon.DateTime.DATETIME_MED_WITH_SECONDS);
-        fs.appendFileSync(`${__dirname}/../storage/${getFileName('notices')}.log`, `${timestamp}: ${JSON.stringify(embed.data)}\n\n`, {encoding: 'utf-8'});
+        fs.appendFileSync(`${__dirname}/../storage/${getFileName('notices')}.log`, `${generateLogTimestamp()}: ${JSON.stringify(embed.data)}\n\n`, {encoding: 'utf-8'});
         console.log(`[NOTICE] Embed titled "${embed.data.title}" logged to ${getFileName('notices')}.log`);
 
         const guild = await getGuild();

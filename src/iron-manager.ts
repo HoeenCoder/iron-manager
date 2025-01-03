@@ -92,7 +92,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
 
 function parseUsername(username: string): [number, string] | null {
     // "[ XVII ] Example Name" -> [17, "Example Name"]
-    const matches = username.match(/^\[ ?((?:[IVXL]|[0-9])+) ?\] (.+)$/i);
+    const matches = username.match(/^\[ ?((?:[IVXLCDM]|[0-9])+) ?\] (.+)$/i);
     if (!matches) {
         // bad username format
         return null;
@@ -118,7 +118,7 @@ export function createUsername(iron: number, name: string): string {
     if (iron < 0) {
         throw new Error(`IRON count when assembling username was negative. name: ${name}, iron: ${iron}`);
     }
-    let numerals = (iron === 0 || iron > 30) ? iron + '' : RomanNumerals.toRoman(iron);
+    let numerals = (iron === 0 || iron > 500) ? iron + '' : RomanNumerals.toRoman(iron);
 
     // length check
     let length = 4 + numerals.length + name.length;

@@ -179,10 +179,8 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                    await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
-                    return;
-                }
+                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, ephemeral: true});
+                return;
             }
 
             const file = interaction.options.getString('file') || '';

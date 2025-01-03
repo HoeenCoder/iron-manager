@@ -11,13 +11,22 @@ export interface IConfig {
     log_channel_id: string,
     thumbnail_icon_url: string,
     voice_category_id: string,
-    onboarding_channel_id: string,
+    onboarding_forum_id: string,
     permissions: {
         "all": string[],
         [permissionKey: string]: string[]
     },
-    onboardingRoles: {
-        [key: string]: string
+    onboarding: {
+        roles: {
+            [key: string]: string
+        },
+        tags: {
+            pending: string,
+            approved: string,
+            rejected: string,
+            flagged: string,
+            closed: string
+        }
     },
     ranks: {
         [iron: string]: {

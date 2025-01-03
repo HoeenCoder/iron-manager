@@ -1,6 +1,6 @@
 {
   "name": "iron-manager",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "description": "Bot for distributing and managing IRON for the 1st Colonial Helldiver Regiment",
   "main": "start",
   "scripts": {
@@ -13,7 +13,7 @@
   "dependencies": {
     "@types/luxon": "^3.4.2",
     "@types/roman-numerals": "^0.3.2",
-    "discord.js": "^14.16.2",
+    "discord.js": "^14.17.2",
     "dotenv": "^16.4.5",
     "luxon": "^3.5.0",
     "roman-numerals": "^0.3.2",

@@ -92,7 +92,7 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
             const replyOptions: Discord.InteractionReplyOptions =
-                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
+                !interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
             let providedUser = interaction.options.getUser('member');
             if (!providedUser) providedUser = interaction.user;
 

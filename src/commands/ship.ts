@@ -192,7 +192,7 @@ const commands: {[key: string]: ICommand} = {
                     .setDescription('Share the results of this command with everyone?')),
         async execute(interaction) {
             const replyOptions: Discord.InteractionReplyOptions =
-                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
+                !interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
 
             const embed = new Discord.EmbedBuilder()
                 .setColor(0x3b4d33)

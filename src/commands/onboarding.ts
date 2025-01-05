@@ -794,6 +794,9 @@ const commands: {[key: string]: ICommand} = {
                     // Delete the message
                     await interaction.message.delete();
                     await interaction.reply({content: `:white_check_mark: Problem Report Deleted.`, flags: Discord.MessageFlags.Ephemeral});
+
+                    // Ensure post is archived
+                    (interaction.channel as Discord.ForumThreadChannel).setArchived(true);
                 },
             }
         }

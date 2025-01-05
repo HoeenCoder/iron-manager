@@ -157,7 +157,7 @@ const commands: {[key: string]: ICommand} = {
 
         async execute(interaction) {
             const replyOptions: Discord.InteractionReplyOptions =
-                interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
+                !interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
             await interaction.deferReply(replyOptions);
 
             // check permissions

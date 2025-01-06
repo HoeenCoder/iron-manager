@@ -159,8 +159,8 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
                 'europe': /(?:europe|eu)/i,
                 'oceania': /(?:oceania|oc|australia|aus)/i,
                 'asia': /(?:asia|as)/i,
-                'africa': /(?:africa|af)/i
-                //'antartica': /(?:antartica|an)/i
+                'africa': /(?:africa|af)/i,
+                'antartica': /(?:antartica|an)/i
             }
         }
     ];

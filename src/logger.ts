@@ -253,7 +253,7 @@ export namespace DeploymentActivityLogger {
         particpated: string[]
     }
 
-    export const MINIMUM_TIME_TO_QUALIFY = 1000 * 60 * 60; // 1 hour
+    export const MINIMUM_TIME_TO_QUALIFY = 1000 * 60 * 90; // 1 hour, 30 minutes
 
     class DeploymentActivityLock extends Lock {
         private jsonFileLoc: string;

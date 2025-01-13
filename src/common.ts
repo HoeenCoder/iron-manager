@@ -10,6 +10,7 @@ import { client } from "./main";
  * Contains useful static methods used throughout the bot.
  */
 export class Utilities {
+    private static deprecationWarningIssued = false;
     static getFileName(fileName: string): string {
         if (process.env.DEV_MODE) {
             return fileName + '-dev';
@@ -62,7 +63,10 @@ export class Utilities {
     static async getGuild(guildId?: string): Promise<Discord.Guild> {
         if (!guildId) {
             // Depreciation warning
-            process.emitWarning('Utilities.getGuild will require a guildId as an argument in the future.');
+            if (!Utilities.deprecationWarningIssued) {
+                process.emitWarning('Utilities.getGuild will require a guildId as an argument in the future.');
+                Utilities.deprecationWarningIssued = true;
+            }
             guildId = process.env.GUILD_ID as string;
         }
 

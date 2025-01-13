@@ -36,15 +36,15 @@ const commands: {[key: string]: ICommand} = {
             }
 
             // 2. Obtain lock, start MOD if not already.
-            const key = await DeploymentActivityLogger.transactionManager.lock();
-            if (DeploymentActivityLogger.transactionManager.isDeploymentActive(key)) {
+            const key = await DeploymentActivityLogger.dataManager.lock();
+            if (DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
                 await interaction.followUp({content: `:x: Deployment is already underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
-                await DeploymentActivityLogger.transactionManager.startDeployment(key);
+                await DeploymentActivityLogger.dataManager.startDeployment(key);
                 await interaction.followUp({content: `:white_check_mark: Deployment started!`, flags: Discord.MessageFlags.Ephemeral});
                 Logger.logToChannel(`Deployment started by <@${interaction.user.id}>.`);
             }
-            await DeploymentActivityLogger.transactionManager.unlock(key);
+            await DeploymentActivityLogger.dataManager.unlock(key);
         },
     },
     'end-deployment': {
@@ -62,21 +62,21 @@ const commands: {[key: string]: ICommand} = {
             }
 
             // 2. Obtain lock, end MOD if not already.
-            const key = await DeploymentActivityLogger.transactionManager.lock();
-            if (!DeploymentActivityLogger.transactionManager.isDeploymentActive(key)) {
+            const key = await DeploymentActivityLogger.dataManager.lock();
+            if (!DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
                 await interaction.followUp({content: `:x: Deployment is not underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
-                DeploymentActivityLogger.transactionManager.endDeployment(key);
+                DeploymentActivityLogger.dataManager.endDeployment(key);
                 await interaction.followUp({content: `:white_check_mark: Deployment ended.`, flags: Discord.MessageFlags.Ephemeral});
                 Logger.logToChannel(`Deployment ended by <@${interaction.user.id}>. Generating participants list for carnage report...\n` +
                     `(Only members with at least ${Luxon.Duration.fromMillis(DeploymentActivityLogger.MINIMUM_TIME_TO_QUALIFY).as('minutes')} minutes of play time will be listed).`
                 );
-                const messages = generateParticipantsMessages(DeploymentActivityLogger.transactionManager.getQualifiedMembers(key));
+                const messages = generateParticipantsMessages(DeploymentActivityLogger.dataManager.getQualifiedMembers(key));
                 for (let m of messages) {
                     Logger.logToChannel(m);
                 }
             }
-            await DeploymentActivityLogger.transactionManager.unlock(key);
+            await DeploymentActivityLogger.dataManager.unlock(key);
         },
     },
     'member-deployment-stats': {
@@ -110,9 +110,9 @@ const commands: {[key: string]: ICommand} = {
                 return;
             }
 
-            const key = await DeploymentActivityLogger.transactionManager.lock();
-            const record = DeploymentActivityLogger.transactionManager.getMemberData(key, member.id) || {joined: null, totalTime: 0};
-            const deploymentOngoing = DeploymentActivityLogger.transactionManager.isDeploymentActive(key);
+            const key = await DeploymentActivityLogger.dataManager.lock();
+            const record = DeploymentActivityLogger.dataManager.getMemberData(key, member.id) || {joined: null, totalTime: 0};
+            const deploymentOngoing = DeploymentActivityLogger.dataManager.isDeploymentActive(key);
             const totalMillis = record.totalTime + (record.joined ? Date.now() - record.joined : 0);
             const totalTime = Luxon.Duration.fromMillis(totalMillis).as('minutes').toFixed(2);
             const requiredTime = Luxon.Duration.fromMillis(DeploymentActivityLogger.MINIMUM_TIME_TO_QUALIFY).as('minutes');
@@ -132,7 +132,7 @@ const commands: {[key: string]: ICommand} = {
 
             await interaction.followUp({embeds: [embed]});
 
-            await DeploymentActivityLogger.transactionManager.unlock(key);
+            await DeploymentActivityLogger.dataManager.unlock(key);
         },
     },
     'generate-participants-message': {
@@ -150,19 +150,19 @@ const commands: {[key: string]: ICommand} = {
             }
 
             // 2. Obtain lock, print report.
-            const key = await DeploymentActivityLogger.transactionManager.lock();
+            const key = await DeploymentActivityLogger.dataManager.lock();
 
-            const messages = generateParticipantsMessages(DeploymentActivityLogger.transactionManager.getQualifiedMembers(key));
+            const messages = generateParticipantsMessages(DeploymentActivityLogger.dataManager.getQualifiedMembers(key));
             for (let m of messages) {
                 await interaction.followUp({content: m, flags: Discord.MessageFlags.Ephemeral});
             }
 
-            if (DeploymentActivityLogger.transactionManager.isDeploymentActive(key)) {
+            if (DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
                 await interaction.followUp({content: `:warning: **Warning! Deployment is still ongoing, this list is subject to change!** ` +
                     `If you want to end the deployment, use /end-deployment.`, flags: Discord.MessageFlags.Ephemeral});
             }
 
-            await DeploymentActivityLogger.transactionManager.unlock(key);
+            await DeploymentActivityLogger.dataManager.unlock(key);
         },
     },
     'get-deployment-logs': {
@@ -182,7 +182,7 @@ const commands: {[key: string]: ICommand} = {
             }
 
             const file = interaction.options.getString('file') || '';
-            const validFiles = DeploymentActivityLogger.transactionManager.getLogFileNames();
+            const validFiles = DeploymentActivityLogger.dataManager.getLogFileNames();
             if (!validFiles.includes(file)) {
                 await interaction.reply({content: `:x: invalid file name "${file}"`, flags: Discord.MessageFlags.Ephemeral});
                 return;
@@ -197,7 +197,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.reply({
                 content: `Deployment log file attached. You can search for members by their unique discord ID: https://www.reddit.com/r/discordapp/comments/myncgd/comment/gvvysmj/`,
                 files: [{
-                    attachment: DeploymentActivityLogger.transactionManager.getFullLogFilePath(file),
+                    attachment: DeploymentActivityLogger.dataManager.getFullLogFilePath(file),
                     name: `${file}`
                 }],
                 flags: Discord.MessageFlags.Ephemeral
@@ -212,7 +212,7 @@ const commands: {[key: string]: ICommand} = {
 
             const focusedOption = interaction.options.getFocused(true);
 
-            const options = DeploymentActivityLogger.transactionManager.getLogFileNames()
+            const options = DeploymentActivityLogger.dataManager.getLogFileNames()
                 .filter(f => f.startsWith(focusedOption.value))
                 .sort((a, b) => {
                     const partsA = ([] as number[]).concat(...a.slice(0, -4).split('T').map(p => p.split('-').map(Number)));

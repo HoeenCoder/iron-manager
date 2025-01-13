@@ -230,7 +230,7 @@ export namespace IronLogger {
         }
     }
 
-    export const transactionManager = new IronLock();
+    export const dataManager = new IronLock();
 }
 
 /**
@@ -523,7 +523,7 @@ export namespace DeploymentActivityLogger {
         }
     }
 
-    export const transactionManager = new DeploymentActivityLock();
+    export const dataManager = new DeploymentActivityLock();
 }
 
 /**
@@ -573,6 +573,95 @@ export namespace OnboardingLogger {
     export function getFullLogFilePath(name: string): string {
         return `${logDirLoc}/${name}`;
     }
+}
+
+export namespace PersistentMessages {
+    interface PersistentMessageJSON {
+        [messageCategory: string]: {
+            [guildId: string]: {
+                channelId: string,
+                messageId: string
+            }
+        }
+    }
+
+    class PersistentMessageManager extends Lock {
+        private jsonFileLoc: string;
+        private messageData: PersistentMessageJSON;
+
+        constructor() {
+            super();
+
+            this.jsonFileLoc = `${__dirname}/../storage/${Utilities.getFileName('persisted-messages')}.json`;
+            if (!fs.existsSync(this.jsonFileLoc)) {
+                this.messageData = {};
+                this.writeJSON();
+            } else {
+                this.messageData = JSON.parse(fs.readFileSync(this.jsonFileLoc, {encoding: 'utf-8'}));
+            }
+        }
+
+        async getMessage(key: string, messageCategory: string, guild: Discord.Guild): Promise<Discord.Message | null> {
+            this.tryKey(key);
+
+            if (!this.messageData[messageCategory] || !this.messageData[messageCategory][guild.id]) {
+                return null; // Category or guild entry doesn't exist
+            }
+
+            try {
+                const channel = await Utilities.getGuildChannel(this.messageData[messageCategory][guild.id].channelId, guild);
+                return await Utilities.getGuildMessage(this.messageData[messageCategory][guild.id].messageId, channel);
+            } catch (e) {
+                // Channel or message no longer exists or can't be accessed
+                return null;
+            }
+        }
+
+        async persistMessage(key: string, messageCategory: string, message: Discord.Message) {
+            this.tryKey(key);
+
+            if (!message.guild) {
+                throw new Error(`Guildless messages do not support persistance.`);
+            }
+
+            if (!this.messageData[messageCategory]) {
+                this.messageData[messageCategory] = {};
+            }
+
+            this.messageData[messageCategory][message.guild.id] = {
+                channelId: message.channel.id,
+                messageId: message.id
+            };
+
+            this.writeJSON();
+        }
+
+        async unPersistMessage(key: string, messageCategory: string, guildId: string) {
+            this.tryKey(key);
+
+            if (!guildId || !this.messageData[messageCategory]) {
+                // category not found or guild not provided.
+                return;
+            }
+
+            if (this.messageData[messageCategory][guildId]) {
+                // Delete the data if it exists.
+                delete this.messageData[messageCategory][guildId];
+                if (Object.keys(this.messageData[messageCategory]).length < 1) {
+                    // Delete the category if empty now.
+                    delete this.messageData[messageCategory];
+                }
+
+                this.writeJSON();
+            }
+        }
+
+        private writeJSON() {
+            fs.writeFileSync(this.jsonFileLoc, JSON.stringify(this.messageData), {encoding: 'utf-8'});
+        }
+    }
+
+    export const dataManager = new PersistentMessageManager();
 }
 
 /**

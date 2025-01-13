@@ -27,9 +27,9 @@ const commands: {[key: string]: ICommand} = {
                 !interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
             await interaction.deferReply(replyOptions);
 
-            const key = await IronLogger.transactionManager.lock();
-            const weekStart = await IronLogger.transactionManager.getCurrentWeekTimestamp(key);
-            await IronLogger.transactionManager.unlock(key);
+            const key = await IronLogger.dataManager.lock();
+            const weekStart = await IronLogger.dataManager.getCurrentWeekTimestamp(key);
+            await IronLogger.dataManager.unlock(key);
             const weekEnd = Luxon.DateTime.fromMillis(weekStart).plus({days: 7}).minus({seconds: 1}).toMillis();
 
             const embed = new Discord.EmbedBuilder()
@@ -73,9 +73,9 @@ const commands: {[key: string]: ICommand} = {
                 return;
             }
 
-            const key = await IronLogger.transactionManager.lock();
-            const records = await IronLogger.transactionManager.readIron(key, member.id);
-            await IronLogger.transactionManager.unlock(key);
+            const key = await IronLogger.dataManager.lock();
+            const records = await IronLogger.dataManager.readIron(key, member.id);
+            await IronLogger.dataManager.unlock(key);
 
             const embed = new Discord.EmbedBuilder()
                 .setColor(0x3b4d33)

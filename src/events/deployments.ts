@@ -15,17 +15,17 @@ const events: {[key: string]: IEvent} = {
             const newActive = newState.channel !== null && newState.channel.parentId === Config.voice_category_id;
             if (oldActive === newActive) return; // Swapped between two channels in the same category group, ignore
 
-            const key = await DeploymentActivityLogger.transactionManager.lock();
-            if (DeploymentActivityLogger.transactionManager.isDeploymentActive(key)) {
+            const key = await DeploymentActivityLogger.dataManager.lock();
+            if (DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
                 if (!oldActive && newActive) {
                     // Join
-                    DeploymentActivityLogger.transactionManager.reportJoin(key, newState.member.id);
+                    DeploymentActivityLogger.dataManager.reportJoin(key, newState.member.id);
                 } else {
                     // Leave
-                    DeploymentActivityLogger.transactionManager.reportLeave(key, oldState.member.id);
+                    DeploymentActivityLogger.dataManager.reportLeave(key, oldState.member.id);
                 }
             }
-            await DeploymentActivityLogger.transactionManager.unlock(key);
+            await DeploymentActivityLogger.dataManager.unlock(key);
         }
     }
 };

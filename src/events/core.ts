@@ -9,7 +9,7 @@ const events: {[key: string]: IEvent} = {
         async execute(client: Discord.Client) {
             console.log(`Logged in as ${client.user?.tag}.`);
             // If required, run the recovery process for the deployment activity logger
-            DeploymentActivityLogger.transactionManager.runRecovery();
+            DeploymentActivityLogger.dataManager.runRecovery();
         }
     },
     command: {

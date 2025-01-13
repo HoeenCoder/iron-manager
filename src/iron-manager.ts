@@ -18,7 +18,7 @@ export interface IronDistributionResults {
 export let recentlyUpdatedNames: string[] = [];
 
 export async function distributeIron(members: Discord.GuildMember[], type: IronLogger.IronAchivementType): Promise<IronDistributionResults> {
-    const key = await IronLogger.transactionManager.lock();
+    const key = await IronLogger.dataManager.lock();
     const completedIDs: string[] = [];
     const results: IronDistributionResults = {
         issued: [],
@@ -36,7 +36,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             continue;
         }
 
-        const data = IronLogger.transactionManager.readIron(key, member.id);
+        const data = IronLogger.dataManager.readIron(key, member.id);
         if (data[type]) {
             // Already got iron
             results.notIssued.push(member);
@@ -55,8 +55,8 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
     }
 
     // Write data and end transaction
-    IronLogger.transactionManager.writeIron(key, attemptToIssue.map(m => m.id), type);
-    await IronLogger.transactionManager.unlock(key);
+    IronLogger.dataManager.writeIron(key, attemptToIssue.map(m => m.id), type);
+    await IronLogger.dataManager.unlock(key);
 
     // Update usernames, ranks
     recentlyUpdatedNames = [];

@@ -7,7 +7,7 @@ import { recentlyUpdatedNames } from '../iron-manager';
 const events: {[key: string]: IEvent} = {
     nickname_monitor: {
         name: Discord.Events.GuildMemberUpdate,
-        execute(oldMember: Discord.PartialGuildMember, newMember: Discord.GuildMember) {
+        async execute(oldMember: Discord.PartialGuildMember, newMember: Discord.GuildMember) {
             if (oldMember.displayName === newMember.displayName) return;
 
             // Ignore newly added members

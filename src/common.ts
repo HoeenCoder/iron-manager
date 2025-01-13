@@ -218,7 +218,7 @@ export const commandRegistry = new Discord.Collection<string, ICommand>();
 export interface IEvent {
     name: Exclude<Discord.Events, Discord.Events.Raw | Discord.Events.VoiceServerUpdate>;
     once?: true;
-    execute: (...args: any) => void;
+    execute: (...args: any) => Promise<void>;
 }
 
 /* event example:

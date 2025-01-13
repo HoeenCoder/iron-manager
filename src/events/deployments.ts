@@ -27,6 +27,14 @@ const events: {[key: string]: IEvent} = {
             }
             await DeploymentActivityLogger.dataManager.unlock(key);
         }
+    },
+    deployment_recovery: {
+        name: Discord.Events.ClientReady,
+        once: true,
+        async execute(client: Discord.Client) {
+            // If required, run the recovery process for the deployment activity logger
+            DeploymentActivityLogger.dataManager.runRecovery();
+        }
     }
 };
 

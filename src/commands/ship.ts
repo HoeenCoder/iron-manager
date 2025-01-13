@@ -1,5 +1,5 @@
 import * as Discord from "discord.js";
-import { getGuild, ICommand, roleBasedPermissionCheck, Config } from "../common";
+import { ICommand, Utilities, Config } from "../common";
 import { Logger } from '../logger';
 
 const SHIP_PREFIXES = [
@@ -28,14 +28,14 @@ const INACTIVE_DESTROYER_CHANNELS: string[] = [];
 const CHANNEL_OWNERS: {[channelId: string]: string} = {};
 
 setInterval(async () => {
-    const guild = await getGuild();
-    if (!guild || !guild.available) {
-        // Something is wrong, try again later.
+    const guild = await Utilities.getGuild().catch(() => null);
+    if (!guild) {
+        // We don't want to crash if this fails
         Logger.logError(`Unable to find guild when attempting purge, is it unavaliable right now? Aborting.`);
         return;
     }
 
-    const voiceCategory = await guild.channels.fetch(Config.voice_category_id);
+    const voiceCategory = await Utilities.getGuildChannel(Config.voice_category_id, guild).catch(() => null);
     if (!voiceCategory) return;
     if (voiceCategory.type !== Discord.ChannelType.GuildCategory) {
         throw new Error(`When purging, voice channel category is not a category. ID: ${Config.voice_category_id}`);
@@ -88,7 +88,8 @@ const commands: {[key: string]: ICommand} = {
 
             // 1. Validation
             const ownerIds = Object.values(CHANNEL_OWNERS);
-            if (ownerIds.includes(interaction.user.id) && !roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (ownerIds.includes(interaction.user.id) &&
+                !Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.followUp({content: `:x: You already have a super destroyer VC, please use that or wait for it to expire before making a new one.`});
                 return;
             }
@@ -106,12 +107,8 @@ const commands: {[key: string]: ICommand} = {
                 return;
             }
 
-            const guild = await getGuild();
-            if (!guild || !guild.available) {
-                throw new Error(`Guild not found when creating ship voice channel!`);
-            }
-
             // 2. Create channel
+            const guild = await Utilities.getGuild();
             const shipChannel = await guild.channels.create({
                 parent: Config.voice_category_id,
                 name: `SES ${prefix} ${postfix}`,

@@ -1,5 +1,5 @@
 import * as Discord from "discord.js";
-import { ICommand, getGuild, Config } from "../common";
+import { ICommand, Utilities, Config } from "../common";
 import { IronLogger } from './../logger';
 import * as Luxon from 'luxon';
 
@@ -67,10 +67,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply(replyOptions);
 
             // Get the GuildMember for this user
-            const guild = await getGuild();
-            if (!guild) throw new Error(`Cannot find guild, might be unavalible.`);
-
-            const member = await guild.members.fetch(providedUser.id);
+            const member = await Utilities.getGuildMember(providedUser.id, await Utilities.getGuild()).catch(() => null);
             if (!member) {
                 await interaction.reply({content: `:x: Member not found.`, flags: Discord.MessageFlags.Ephemeral});
                 return;

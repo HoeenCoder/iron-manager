@@ -1,4 +1,4 @@
-import { IEvent, Config, getGuild } from '../common';
+import { IEvent, Config, Utilities } from '../common';
 import * as Discord from 'discord.js';
 import { distributeIron, IronDistributionResults } from '../iron-manager';
 import { Logger } from '../logger';
@@ -10,8 +10,11 @@ const events: {[key: string]: IEvent} = {
             // 1. Validate
             if (!Config.report_channel_id || message.channelId !== Config.report_channel_id) return;
 
-            const guild = await getGuild();
-            if (!guild) return;
+            const guild = await Utilities.getGuild().catch(() => null);
+            if (!guild) {
+                // Silently return
+                return;
+            }
 
             const matches = [...message.content.matchAll(/[0-9]+ *- *<@([0-9]+)> *$/gm)].map(v => v[1]);
             if (!matches.length) return;
@@ -19,10 +22,8 @@ const events: {[key: string]: IEvent} = {
             // 2. Prepare
             const members: Discord.GuildMember[] = [];
             for (const id of matches) {
-                let member: Discord.GuildMember;
-                try {
-                    member = await guild.members.fetch(id);
-                } catch (e) {
+                const member = await Utilities.getGuildMember(id, guild).catch(() => null);
+                if (!member) {
                     // Can't find member, skip
                     continue;
                 }

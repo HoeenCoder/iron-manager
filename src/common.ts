@@ -6,6 +6,127 @@ import * as Discord from "discord.js";
 import fs = require('fs');
 import { client } from "./main";
 
+/**
+ * Contains useful static methods used throughout the bot.
+ */
+export class Utilities {
+    static getFileName(fileName: string): string {
+        if (process.env.DEV_MODE) {
+            return fileName + '-dev';
+        }
+        return fileName;
+    }
+
+    /**
+     * Determine if a member can perform the requested action.
+     * @param permissionKey The specific category of action being taken.
+     * Each key is associated with an array of roles that can perform those tasks in config.json.
+     * @param member The member taking the action.
+     * @returns a boolean indicating if the action is permitted.
+     */
+    static roleBasedPermissionCheck(permissionKey: string, member: Discord.GuildMember): boolean {
+        const allAccessRoles: string[] = Config.permissions['all'] || [];
+
+        if (!(permissionKey in Config.permissions)) {
+            if (!allAccessRoles || !allAccessRoles.length) {
+                console.log(`Permissions not configred! Please configure permissions in config.json!`);
+                return false; // Perms not configured
+            }
+            permissionKey = 'all'; // default to global permission
+        }
+
+        let eligibleRoles = Config.permissions[permissionKey];
+        if (permissionKey !== 'all') {
+            eligibleRoles = eligibleRoles.concat(allAccessRoles);
+        }
+
+        const roles = member.roles.cache;
+
+        for (const role of eligibleRoles) {
+            if (roles.has(role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the guild specified by the guildId. If not provided. defaults to the bot's main guild.
+     * The guildId argument will be MANDATORY in the future as support for multiple servers is added.
+     * @param guildId The guild to get, defaults to the bot's main guild.
+     * @returns The requested guild or (deprecated) the default one.
+     * @throws An error if the guild isn't found or isn't avaliable.
+     * If you don't want an error as a result, I recommend appending this call with .catch(() => null);
+     */
+    static async getGuild(guildId?: string): Promise<Discord.Guild> {
+        if (!guildId) {
+            // Depreciation warning
+            process.emitWarning('Utilities.getGuild will require a guildId as an argument in the future.');
+            guildId = process.env.GUILD_ID as string;
+        }
+
+        const guild = await client.guilds.fetch(process.env.GUILD_ID as string);
+        if (!guild || !guild.available) {
+            throw new Error(`Guild "${guildId}" is unavaliable or does not exist.`);
+        }
+        return guild;
+    }
+
+    /**
+     * Get a channel from a guild.
+     * @param channelId The channel to get.
+     * @param guild The guild the channel is a part of.
+     * @returns The requested channel.
+     * @throws An error if the channel is not found.
+     * If you don't want an error as a result, I recommend appending this call with .catch(() => null);
+     */
+    static async getGuildChannel(channelId: string, guild: Discord.Guild): Promise<Discord.GuildBasedChannel> {
+        const channel = await guild.channels.fetch(channelId);
+        if (!channel) {
+            throw new Error(`Channel "${channelId}" not found in guild with ID "${guild.id}".`);
+        }
+        return channel;
+    }
+
+    /**
+     * Get a message from a channel by ID.
+     * @param messageId ID of the message to get.
+     * @param channel Channel the message is a part of.
+     * @returns The message.
+     * @throws An error if the channel is not text based (has no messages) or if the message is not found.
+     * If you don't want an error as a result, I recommend appending this call with .catch(() => null);
+     */
+    static async getGuildMessage(messageId: string, channel: Discord.GuildBasedChannel): Promise<Discord.Message> {
+        if (!channel.isTextBased()) {
+            throw new Error(`Channel "${channel.id}" is not text based, cannot get message.`);
+        }
+
+        const message = await channel.messages.fetch(messageId);
+        if (!message) {
+            throw new Error(`Message "${messageId}" not found in channel with ID "${channel.id}".`);
+        }
+        return message;
+    }
+
+    /**
+     * Get a guild member.
+     * @param userId The ID of the member to get.
+     * @param guild The guild the member is a part of.
+     * @returns The guild member or null if not found.
+     * @throws An error if the member if not found.
+     * If you don't want an error as a result, I recommend appending this call with .catch(() => null);
+     */
+    static async getGuildMember(userId: string, guild: Discord.Guild): Promise<Discord.GuildMember> {
+        try {
+            return await guild.members.fetch(userId);
+        } catch (e) {
+            // Improved error
+            throw new Error(`Guild member not found.`);
+        }
+    }
+}
+
 export interface IConfig {
     report_channel_id: string,
     log_channel_id: string,
@@ -38,52 +159,14 @@ export interface IConfig {
 }
 
 const configPath = `${__dirname}/../storage/`;
-if (!fs.existsSync(`${configPath}/${getFileName('config')}.json`)) {
-    fs.writeFileSync(`${configPath}/${getFileName('config')}.json`,
+if (!fs.existsSync(`${configPath}/${Utilities.getFileName('config')}.json`)) {
+    fs.writeFileSync(`${configPath}/${Utilities.getFileName('config')}.json`,
         // config-example is the same dev or otherwise
         fs.readFileSync(`${configPath}/config-example.json`, {encoding: 'utf-8'}),
     {encoding: 'utf-8'});
 }
 
-export let Config: IConfig;
-export function reloadConfig() {
-    Config = JSON.parse(fs.readFileSync(`${configPath}/${getFileName('config')}.json`, {encoding: 'utf-8'}));
-}
-reloadConfig();
-
-/**
- * Determine if a member can perform the requested action.
- * @param permissionKey The specific category of action being taken.
- * Each key is associated with an array of roles that can perform those tasks in config.json.
- * @param member The member taking the action.
- * @returns a boolean indicating if the action is permitted.
- */
-export function roleBasedPermissionCheck(permissionKey: string, member: Discord.GuildMember): boolean {
-    const allAccessRoles: string[] = Config.permissions['all'] || [];
-
-    if (!(permissionKey in Config.permissions)) {
-        if (!allAccessRoles || !allAccessRoles.length) {
-            console.log(`Permissions not configred! Please configure permissions in config.json!`);
-            return false; // Perms not configured
-        }
-        permissionKey = 'all'; // default to global permission
-    }
-
-    let eligibleRoles = Config.permissions[permissionKey];
-    if (permissionKey !== 'all') {
-        eligibleRoles = eligibleRoles.concat(allAccessRoles);
-    }
-
-    const roles = member.roles.cache;
-
-    for (const role of eligibleRoles) {
-        if (roles.has(role)) {
-            return true;
-        }
-    }
-
-    return false;
-}
+export let Config: IConfig = JSON.parse(fs.readFileSync(`${configPath}/${Utilities.getFileName('config')}.json`, {encoding: 'utf-8'}));
 
 /**
  * Component Interface - Represents a component's (button or string select menu) response method.
@@ -144,23 +227,3 @@ let e: IEvent = {
     once: true,
     execute(one: number, two: string) {}
 }*/
-
-/**
- * Get the bot's guild. The bot is programmed for a single guild currently.
- */
-export async function getGuild(): Promise<Discord.Guild | null> {
-    let guild = await client.guilds.fetch(process.env.GUILD_ID as string);
-    if (!guild || !guild.available) return null;
-    return guild;
-}
-
-/**
- * Get the updated file name (excluding extention and filepath) based on if dev mode is enabled
- */
-export function getFileName(fileName: string): string {
-    if (process.env.DEV_MODE) {
-        return fileName + '-dev';
-    }
-    return fileName;
-}
-

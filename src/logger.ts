@@ -1,6 +1,6 @@
 import fs = require('fs');
 import Luxon = require('luxon');
-import { Config, getGuild, getFileName } from './common';
+import { Config, Utilities } from './common';
 import * as Discord from 'discord.js';
 import crypto = require('crypto');
 
@@ -102,7 +102,7 @@ export namespace IronLogger {
 
         constructor() {
             super();
-            this.fileLoc = `${__dirname}/../storage/${getFileName('iron')}.json`;
+            this.fileLoc = `${__dirname}/../storage/${Utilities.getFileName('iron')}.json`;
 
             if (!fs.existsSync(this.fileLoc)) {
                 this.iron = {
@@ -263,7 +263,7 @@ export namespace DeploymentActivityLogger {
 
         constructor() {
             super();
-            this.jsonFileLoc = `${__dirname}/../storage/${getFileName('deployment-voice')}.json`;
+            this.jsonFileLoc = `${__dirname}/../storage/${Utilities.getFileName('deployment-voice')}.json`;
             this.logDirLoc = `${__dirname}/../storage/deployment-logs`;
 
             if (!fs.existsSync(this.jsonFileLoc)) {
@@ -294,14 +294,11 @@ export namespace DeploymentActivityLogger {
             const inactiveIds = Object.keys(this.activityRecords.members);
 
             // 1. Ensure all members activly in VC are marked as active
-            const guild = await getGuild();
-            if (!guild || !guild.available) {
-                // Something is wrong...
-                throw new Error('Unable to find guild when recovering deployment activity logger after a reboot.');
-            }
-
-            const voiceCategory = await guild.channels.fetch(Config.voice_category_id);
+            const guild = await Utilities.getGuild().catch(() => null);
+            if (!guild) return;
+            const voiceCategory = await Utilities.getGuildChannel(Config.voice_category_id, guild).catch(() => null);
             if (!voiceCategory) return;
+
             if (voiceCategory.type !== Discord.ChannelType.GuildCategory) {
                 throw new Error(`When performing deployment activity recovery, voice channel category is not a category. ID: ${Config.voice_category_id}`);
             }
@@ -394,14 +391,11 @@ export namespace DeploymentActivityLogger {
             this.resetJSON();
 
             // Detect members who are already deployed
-            const guild = await getGuild();
-            if (!guild || !guild.available) {
-                // Something is wrong...
-                throw new Error('Unable to find guild when starting deployment.');
-            }
-
-            const voiceCategory = await guild.channels.fetch(Config.voice_category_id);
+            const guild = await Utilities.getGuild().catch(() => null);
+            if (!guild) return;
+            const voiceCategory = await Utilities.getGuildChannel(Config.voice_category_id, guild).catch(() => null);
             if (!voiceCategory) return;
+
             if (voiceCategory.type !== Discord.ChannelType.GuildCategory) {
                 throw new Error(`When performing starting deployment, voice channel category is not a category. ID: ${Config.voice_category_id}`);
             }
@@ -592,30 +586,37 @@ export namespace Logger {
         }
 
         console.error(e);
-        fs.appendFileSync(`${__dirname}/../storage/${getFileName('errors')}.log`, `${generateLogTimestamp()}: ${errorText}\n\n`, {encoding: 'utf-8'});
+        fs.appendFileSync(`${__dirname}/../storage/${Utilities.getFileName('errors')}.log`, `${generateLogTimestamp()}: ${errorText}\n\n`, {encoding: 'utf-8'});
     }
 
     export async function logToChannel(msg: string) {
-        fs.appendFileSync(`${__dirname}/../storage/${getFileName('notices')}.log`, `${generateLogTimestamp()}: ${msg}\n\n`, {encoding: 'utf-8'});
+        fs.appendFileSync(`${__dirname}/../storage/${Utilities.getFileName('notices')}.log`, `${generateLogTimestamp()}: ${msg}\n\n`, {encoding: 'utf-8'});
 
-        const guild = await getGuild();
-        if (!guild) return; // weird...
+        const guild = await Utilities.getGuild().catch(() => null);
+        if (!guild) return;
 
-        const channel = await guild.channels.fetch(Config.log_channel_id);
-        if (!channel || !channel.isSendable()) return;
+        const channel = await Utilities.getGuildChannel(Config.log_channel_id, guild).catch(() => null);
+        if (!channel) return;
+
+        if (!channel.isSendable()) {
+            throw new Error(`Log channel is not sendable!`);
+        }
 
         channel.send(msg);
     }
 
     export async function logEmbedToChannel(embed: Discord.EmbedBuilder) {
-        fs.appendFileSync(`${__dirname}/../storage/${getFileName('notices')}.log`, `${generateLogTimestamp()}: ${JSON.stringify(embed.data)}\n\n`, {encoding: 'utf-8'});
-        console.log(`[NOTICE] Embed titled "${embed.data.title}" logged to ${getFileName('notices')}.log`);
+        fs.appendFileSync(`${__dirname}/../storage/${Utilities.getFileName('notices')}.log`, `${generateLogTimestamp()}: ${JSON.stringify(embed.data)}\n\n`, {encoding: 'utf-8'});
+        console.log(`[NOTICE] Embed titled "${embed.data.title}" logged to ${Utilities.getFileName('notices')}.log`);
 
-        const guild = await getGuild();
-        if (!guild) return; // weird...
+        const guild = await Utilities.getGuild().catch(() => null);
+        if (!guild) return;
+        const channel = await Utilities.getGuildChannel(Config.log_channel_id, guild).catch(() => null);
+        if (!channel) return;
 
-        const channel = await guild.channels.fetch(Config.log_channel_id);
-        if (!channel || !channel.isSendable()) return;
+        if (!channel.isSendable()) {
+            throw new Error(`Log channel is not sendable!`);
+        }
 
         channel.send({embeds: [embed]});
     }

@@ -55,7 +55,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
     }
 
     // Write data and end transaction
-    await IronLogger.transactionManager.writeIron(key, attemptToIssue.map(m => m.id), type);
+    IronLogger.transactionManager.writeIron(key, attemptToIssue.map(m => m.id), type);
     await IronLogger.transactionManager.unlock(key);
 
     // Update usernames, ranks

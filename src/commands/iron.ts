@@ -1,5 +1,5 @@
 import * as Discord from "discord.js";
-import { getGuild, ICommand, roleBasedPermissionCheck, Config } from "../common";
+import { ICommand, Utilities, Config } from "../common";
 import { Logger, IronLogger } from './../logger';
 import { distributeIron, IronDistributionResults } from './../iron-manager';
 
@@ -34,13 +34,13 @@ const commands: {[key: string]: ICommand} = {
 
             if (type === "deployment") {
                 // Deployment IRON requires freedom captain+
-                if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+                if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                     await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                     return;
                 }
             } else {
                 // Commendation IRON required IRON commission+
-                if (!roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
+                if (!Utilities.roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
                     await interaction.followUp({content: `:x: Access Denied. Requires IRON Commission permissions.`, flags: Discord.MessageFlags.Ephemeral});
                     return;
                 }
@@ -58,16 +58,12 @@ const commands: {[key: string]: ICommand} = {
             }
 
             // Convert to GuildMembers
-            const guild = await getGuild();
-            if (!guild) throw new Error(`Cannot find guild, might be unavalible.`);
-
+            const guild = await Utilities.getGuild();
             const members: Discord.GuildMember[] = [];
             for (const id of matches) {
-                let member: Discord.GuildMember;
-                try {
-                    member = await guild.members.fetch(id);
-                } catch (e) {
-                    // Can't find member, skip
+                let member = await Utilities.getGuildMember(id, guild).catch(() => null);
+                if (!member) {
+                    // Can't find them, skip.
                     continue;
                 }
                 members.push(member);
@@ -143,7 +139,7 @@ const commands: {[key: string]: ICommand} = {
                 flags: Discord.MessageFlags.Ephemeral
             });
 
-            Logger.logEmbedToChannel(reportEmbed);
+            await Logger.logEmbedToChannel(reportEmbed);
         }
     },
     explainironreport: {
@@ -161,7 +157,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply(replyOptions);
 
             // check permissions
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`});
                 return;
             }

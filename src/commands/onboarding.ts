@@ -1,5 +1,5 @@
 import * as Discord from "discord.js";
-import { ICommand, roleBasedPermissionCheck, IConfig, Config, getGuild } from "../common";
+import { ICommand, IConfig, Config, Utilities } from "../common";
 import { Logger, OnboardingLogger } from '../logger';
 import { createUsername, tryPromotion } from "../iron-manager";
 
@@ -36,12 +36,7 @@ const onboardingButtonRow = new Discord.ActionRowBuilder<Discord.ButtonBuilder>(
  * @returns Forum channel where applications are posted.
  */
 async function getApplicationForum(): Promise<Discord.ForumChannel> {
-    const guild = await getGuild();
-    if (!guild) {
-        throw new Error(`Guild not found!`);
-    }
-
-    const onboardingChannel = await guild.channels.fetch(Config.onboarding_forum_id);
+    const onboardingChannel = await Utilities.getGuildChannel(Config.onboarding_forum_id, await Utilities.getGuild()).catch(() => null);
     if (!onboardingChannel || !(onboardingChannel instanceof Discord.ForumChannel)) {
         Logger.logToChannel(`Onboarding submission received but no sendable onboarding forum is configured! Please configure the onboarding forum!`);
         throw new Error(`Onboarding forum not found!`);
@@ -106,18 +101,12 @@ async function setThreadTag(thread: Discord.ForumThreadChannel, tag: keyof IConf
  */
 async function approveApplicant(interaction: Discord.ButtonInteraction, rankCategory: '0' | 'E') {
     // 1. Validation
-    const guild = await getGuild();
-    if (!guild) {
-        throw new Error(`Guild not found!`);
-    }
-
+    const guild = await Utilities.getGuild();
     const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
     const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
-    let applicant: Discord.GuildMember;
+    const applicant = await Utilities.getGuildMember(userId, guild).catch(() => null);
 
-    try {
-        applicant = await guild.members.fetch(userId);
-    } catch (e) {
+    if (!applicant) {
         await interaction.followUp({
             content: `Could not find applicant to approve, did they leave the server?\n\n` +
                 `You can delete this application with the "Delete Application" button.`,
@@ -259,18 +248,16 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Display the message and button to open the onboarding popup. Must be High Command.')
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.Administrator),
         async execute(interaction) {
-            if (!roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
                 await interaction.reply({content: `:x: Access Denied. Requires High Command permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
-            const guild = await getGuild();
-            if (!guild) {
-                throw new Error(`Guild not found!`);
-            }
-
-            const onboardingChannel = await guild.channels.fetch(Config.onboarding_forum_id);
-            if (!onboardingChannel) {
+            let onboardingChannel: Discord.ForumChannel;
+            try {
+                onboardingChannel = await getApplicationForum();
+            } catch (e) {
+                // Forum not configured
                 await interaction.reply({content: `:x: Could not find onboarding report channel, please make sure its configured!`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -438,7 +425,7 @@ const commands: {[key: string]: ICommand} = {
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
@@ -456,7 +443,7 @@ const commands: {[key: string]: ICommand} = {
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
@@ -471,23 +458,15 @@ const commands: {[key: string]: ICommand} = {
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
-                    const guild = await getGuild();
-                    if (!guild) {
-                        throw new Error(`Guild not found!`);
-                    }
-
                     const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
                     const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
-                    let applicant: Discord.GuildMember;
-
-                    try {
-                        applicant = await guild.members.fetch(userId);
-                    } catch (e) {
+                    const applicant = await Utilities.getGuildMember(userId, await Utilities.getGuild()).catch(() => null);
+                    if (!applicant) {
                         await interaction.reply({
                             content: `Could not find applicant to reject, did they leave the server?`,
                             flags: Discord.MessageFlags.Ephemeral
@@ -529,30 +508,23 @@ const commands: {[key: string]: ICommand} = {
                         throw new Error(`Onboarding Rejection Submission: expected modal submission, got ${interaction.componentType}`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
                     await interaction.deferReply();
 
-                    const guild = await getGuild();
-                    if (!guild) {
-                        throw new Error(`Guild not found!`);
-                    }
-
                     // DM reason, link to nexus and kick
-                    let applicant: Discord.GuildMember;
                     const rejectionRecord = rejectionTable[interaction.user.id];
-
-                    try {
-                        applicant = await guild.members.fetch(rejectionRecord[0]);
-                    } catch (e) {
+                    const applicant = await Utilities.getGuildMember(rejectionRecord[0], await Utilities.getGuild()).catch(() => null);
+                    if (!applicant) {
                         await interaction.followUp({
                             content: `Could not find applicant to reject, did they leave the server?`
                         });
                         return;
                     }
+
                     const reason = interaction.fields.getTextInputValue('onboarding-rejection-reason') || 'No reason provided';
 
                     try {
@@ -614,7 +586,7 @@ const commands: {[key: string]: ICommand} = {
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
@@ -643,7 +615,7 @@ const commands: {[key: string]: ICommand} = {
                         throw new Error(`Onboarding Rejection Submission: expected modal submission, got ${interaction.componentType}`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
@@ -707,7 +679,7 @@ const commands: {[key: string]: ICommand} = {
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
@@ -749,7 +721,7 @@ const commands: {[key: string]: ICommand} = {
 
                     await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
@@ -786,7 +758,7 @@ const commands: {[key: string]: ICommand} = {
                             'Modal Submission' : interaction.componentType}.`);
                     }
 
-                    if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+                    if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                         await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
@@ -812,7 +784,7 @@ const commands: {[key: string]: ICommand} = {
                     .setAutocomplete(true))
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -840,7 +812,7 @@ const commands: {[key: string]: ICommand} = {
             });
         },
         async autocomplete(interaction) {
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 // Those who do not have permission do not see the options.
                 await interaction.respond([]);
                 return;
@@ -867,7 +839,7 @@ const commands: {[key: string]: ICommand} = {
                     .setRequired(true))
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
-            if (!roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                 await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }

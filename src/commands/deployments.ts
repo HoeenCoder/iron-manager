@@ -1,5 +1,5 @@
 import * as Discord from "discord.js";
-import { ICommand, roleBasedPermissionCheck, Config, getGuild } from "../common";
+import { ICommand, Config, Utilities } from "../common";
 import { DeploymentActivityLogger, Logger } from './../logger';
 import Luxon = require('luxon');
 
@@ -30,7 +30,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -56,7 +56,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -98,16 +98,13 @@ const commands: {[key: string]: ICommand} = {
 
             await interaction.deferReply(replyOptions);
 
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`});
                 return;
             }
 
             // Get the GuildMember for this user
-            const guild = await getGuild();
-            if (!guild) throw new Error(`Cannot find guild, might be unavalible.`);
-
-            const member = await guild.members.fetch(providedUser.id);
+            const member = await Utilities.getGuildMember(providedUser.id, await Utilities.getGuild()).catch(() => null);
             if (!member) {
                 await interaction.reply({content: `:x: Member not found.`});
                 return;
@@ -147,7 +144,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -179,7 +176,7 @@ const commands: {[key: string]: ICommand} = {
                     .setAutocomplete(true))
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
         async execute(interaction) {
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -207,7 +204,7 @@ const commands: {[key: string]: ICommand} = {
             });
         },
         async autocomplete(interaction) {
-            if (!roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 // Those who do not have permission do not see the options.
                 await interaction.respond([]);
                 return;

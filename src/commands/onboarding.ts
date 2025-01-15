@@ -782,7 +782,7 @@ const commands: {[key: string]: ICommand} = {
                     .setDescription('Logs names are the user ID of the applicant.')
                     .setRequired(true)
                     .setAutocomplete(true))
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
@@ -837,7 +837,7 @@ const commands: {[key: string]: ICommand} = {
                 o.setName('members')
                     .setDescription('The mention(s) (@s) new member(s) to mention in the message.')
                     .setRequired(true))
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
                 await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});

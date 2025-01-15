@@ -25,7 +25,7 @@ const commands: {[key: string]: ICommand} = {
         data: new Discord.SlashCommandBuilder()
             .setName('start-deployment')
             .setDescription('Start tracking member playtime for a major order deployment. Requires Freedom Captain.')
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
@@ -51,7 +51,7 @@ const commands: {[key: string]: ICommand} = {
         data: new Discord.SlashCommandBuilder()
             .setName('end-deployment')
             .setDescription('Stop tracking member playtime for a major order deployment. Requires Freedom Captain.')
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
@@ -89,7 +89,7 @@ const commands: {[key: string]: ICommand} = {
             .addBooleanOption(o =>
                 o.setName('broadcast')
                     .setDescription('Share the results of this command with everyone?'))
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             const replyOptions: Discord.InteractionReplyOptions =
                 !interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
@@ -139,7 +139,7 @@ const commands: {[key: string]: ICommand} = {
         data: new Discord.SlashCommandBuilder()
             .setName('generate-participants-message')
             .setDescription('Generate the participants section of the carnage report based on deployment records.')
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
@@ -174,7 +174,7 @@ const commands: {[key: string]: ICommand} = {
                     .setDescription('Logs names are the timestamp of when the MOD started. YYYY-MM-DDTHH-MM-SS.log')
                     .setRequired(true)
                     .setAutocomplete(true))
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
                 await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});

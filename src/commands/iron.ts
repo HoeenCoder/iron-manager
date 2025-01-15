@@ -20,7 +20,7 @@ const commands: {[key: string]: ICommand} = {
                 o.setName('members')
                     .setDescription('The mentions (@s) of the members to award IRON to.')
                     .setRequired(true))
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
@@ -149,7 +149,7 @@ const commands: {[key: string]: ICommand} = {
             .addBooleanOption(o =>
                 o.setName('broadcast')
                     .setDescription('Share the results of this command with everyone?'))
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.ManageNicknames),
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
 
         async execute(interaction) {
             const replyOptions: Discord.InteractionReplyOptions =

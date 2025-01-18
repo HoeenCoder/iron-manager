@@ -88,8 +88,7 @@ const commands: {[key: string]: ICommand} = {
                     .setDescription('The member to get stats for, defaults to yourself'))
             .addBooleanOption(o =>
                 o.setName('broadcast')
-                    .setDescription('Share the results of this command with everyone?'))
-            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
+                    .setDescription('Share the results of this command with everyone?')),
         async execute(interaction) {
             const replyOptions: Discord.InteractionReplyOptions =
                 !interaction.options.getBoolean('broadcast') ? {flags: Discord.MessageFlags.Ephemeral} : {};
@@ -97,11 +96,6 @@ const commands: {[key: string]: ICommand} = {
             if (!providedUser) providedUser = interaction.user;
 
             await interaction.deferReply(replyOptions);
-
-            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`});
-                return;
-            }
 
             // Get the GuildMember for this user
             const member = await Utilities.getGuildMember(providedUser.id, await Utilities.getGuild()).catch(() => null);

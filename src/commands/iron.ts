@@ -35,13 +35,13 @@ const commands: {[key: string]: ICommand} = {
             if (type === "deployment") {
                 // Deployment IRON requires freedom captain+
                 if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                    await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
+                    await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('iron')}.`, flags: Discord.MessageFlags.Ephemeral});
                     return;
                 }
             } else {
                 // Commendation IRON required IRON commission+
                 if (!Utilities.roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
-                    await interaction.followUp({content: `:x: Access Denied. Requires IRON Commission permissions.`, flags: Discord.MessageFlags.Ephemeral});
+                    await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
                     return;
                 }
             }
@@ -158,7 +158,7 @@ const commands: {[key: string]: ICommand} = {
 
             // check permissions
             if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`});
+                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('iron')}.`});
                 return;
             }
 

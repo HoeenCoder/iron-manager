@@ -32,6 +32,11 @@
         }
     },
     "ranks": {
+        "E": {
+            "required": [],
+            "add": [],
+            "remove": []
+        },
         "0": {
             "required": [],
             "add": [],

@@ -53,6 +53,27 @@ export class Utilities {
     }
 
     /**
+     * Get a string containing all roles that are permitted to perform the specified action.
+     * @param permissionKey permissionKey The specific category of action being taken.
+     * Each key is associated with an array of roles that can perform those tasks in config.json.
+     * @returns a string containing role mentions.
+     */
+    static getRequiredRoleString(permissionKey: string): string {
+        if (!(permissionKey in Config.permissions)) {
+            // If no valid key is found, return an error message.
+            return `ERROR: Bad Permissions Key`;
+        }
+
+        const allAccessRoles: string[] = Config.permissions['all'] || [];
+        let eligibleRoles = Config.permissions[permissionKey];
+        if (permissionKey !== 'all') {
+            eligibleRoles = eligibleRoles.concat(allAccessRoles);
+        }
+
+        return eligibleRoles.map(rid => `<@&${rid}>`).join(", ");
+    }
+
+    /**
      * Get the guild specified by the guildId. If not provided. defaults to the bot's main guild.
      * The guildId argument will be MANDATORY in the future as support for multiple servers is added.
      * @param guildId The guild to get, defaults to the bot's main guild.

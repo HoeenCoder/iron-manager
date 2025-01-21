@@ -30,8 +30,8 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
-            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
+            if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
+                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -56,8 +56,8 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
-            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
+            if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
+                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -138,8 +138,8 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
-            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
+            if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
+                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -170,8 +170,8 @@ const commands: {[key: string]: ICommand} = {
                     .setAutocomplete(true))
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
-            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires Freedom Captain permissions.`, flags: Discord.MessageFlags.Ephemeral});
+            if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
+                await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -198,7 +198,7 @@ const commands: {[key: string]: ICommand} = {
             });
         },
         async autocomplete(interaction) {
-            if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
+            if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
                 // Those who do not have permission do not see the options.
                 await interaction.respond([]);
                 return;

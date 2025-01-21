@@ -16,7 +16,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             const key = await IronLogger.dataManager.lock();
-            await IronLogger.dataManager.resetIron(key);
+            IronLogger.dataManager.resetIron(key);
             await IronLogger.dataManager.unlock(key);
             await interaction.followUp({content: 'IRON JSON reset.', flags: Discord.MessageFlags.Ephemeral});
         }

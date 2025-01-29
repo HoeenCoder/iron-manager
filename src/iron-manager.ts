@@ -70,7 +70,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
 
         const username = createUsername(...parsed);
         if (!member.manageable) {
-            const newNumerals = parsed[0] <= 31 && parsed[0] > 0 ? RomanNumerals.toRoman(parsed[0]) : parsed[0] + '';
+            const newNumerals = parsed[0] <= 500 && parsed[0] > 0 ? RomanNumerals.toRoman(parsed[0]) : parsed[0] + '';
             results.namePermsError.push([member, newNumerals]);
             continue;
         }
@@ -121,7 +121,7 @@ export function createUsername(iron: number, name: string): string {
     let numerals = (iron === 0 || iron > 500) ? iron + '' : RomanNumerals.toRoman(iron);
 
     // length check
-    let length = 4 + numerals.length + name.length;
+    let length = 5 + numerals.length + name.length;
     if (length <= 32) {
         // Ok for [ IRON ] NAME
         return `[ ${numerals} ] ${name}`;
@@ -130,7 +130,7 @@ export function createUsername(iron: number, name: string): string {
         return `[${numerals}] ${name}`;
     } else {
         // try using decimal instead of roman numerals
-        length = 4 + ('' + iron).length + name.length;
+        length = 5 + ('' + iron).length + name.length;
         if (length <= 32) {
             // Use [ IRON ] NAME
             return `[ ${iron} ] ${name}`;

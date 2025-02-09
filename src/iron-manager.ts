@@ -3,7 +3,7 @@
  */
 import RomanNumerals = require('roman-numerals');
 import * as Discord from 'discord.js';
-import { IronLogger } from './logger';
+import { IronLogger, Logger } from './logger';
 import { Config } from './common';
 
 export interface IronDistributionResults {
@@ -63,8 +63,11 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
     for (let member of attemptToIssue) {
         const parsed = parseUsername(member.displayName);
         if (!parsed) {
-            // should never happen
-            throw new Error(`Invalid name when attempting to issue iron! Name: ${member.displayName}`);
+            // should never happen, can't throw here safely.
+            await Logger.logToChannel(`Invalid name when attempting to issue iron! Name: ${member.displayName}.\n\n` +
+                `Please fix their username and manually increase their IRON count by 1 (via nickname editing).`
+            );
+            continue;
         }
         parsed[0]++;
 
@@ -75,7 +78,13 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             continue;
         }
         recentlyUpdatedNames.push(member.id);
-        await member.setNickname(username);
+        await member.setNickname(username).catch((e) => {
+            // Should never happen but OK, we can't crash here, handle it the best we can.
+            Logger.logToChannel(`Error when attempting to issue iron! Target username: ${username}.\n\n` +
+                `Please set their username to the one provided above (via nickname editing).`
+            );
+            Logger.logError(e);
+        });
 
         // Try to promote, if an error occurs due to permissions...
         if (await tryPromotion(member, '' + parsed[0])) {

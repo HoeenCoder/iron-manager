@@ -340,9 +340,11 @@ const commands: {[key: string]: ICommand} = {
                         throw new Error(`No reference to applicant who submitted onboarding form.`);
                     }
 
+                    await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
+
                     const applicant = interaction.member;
                     if (!applicant.roles.cache.hasAll(...Config.ranks[0].required)) {
-                        await interaction.reply({
+                        await interaction.followUp({
                             content: `:x: Only applicants can fill out an application form.`,
                             flags: Discord.MessageFlags.Ephemeral
                         });
@@ -354,7 +356,7 @@ const commands: {[key: string]: ICommand} = {
                     if (thread && 
                         (thread.appliedTags.includes(Config.onboarding.tags.pending) ||
                         thread.appliedTags.includes(Config.onboarding.tags.flagged))) {
-                        await interaction.reply({
+                        await interaction.followUp({
                             content: `:x: You already have a pending application open. ` +
                                 `Feel free to reach out to us if you have any questions or concerns.`,
                             flags: Discord.MessageFlags.Ephemeral,
@@ -412,7 +414,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     OnboardingLogger.logCreation(applicant, platform, name, hasMic, continent, ageCheck);
-                    await interaction.reply({content: `:white_check_mark: Your application was received and is under review!`, flags: Discord.MessageFlags.Ephemeral});
+                    await interaction.followUp({content: `:white_check_mark: Your application was received and is under review!`, flags: Discord.MessageFlags.Ephemeral});
                 }
             },
             'onboarding-applicant-approve': {

@@ -25,24 +25,36 @@ const commands: {[key: string]: ICommand} = {
         data: new Discord.SlashCommandBuilder()
             .setName('start-deployment')
             .setDescription('Start tracking member playtime for a major order deployment. Requires Freedom Captain.')
+            .addStringOption(o => o.setName('operation_name')
+                .setDescription('Name of the operation for the MOD report')
+                .setRequired(true))
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
             // 1. check permissions
             if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`,
+                    flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
-            // 2. Obtain lock, start MOD if not already.
+            // 2. Validate OP name
+            const operationName = interaction.options.getString('operation_name');
+            if (!operationName || operationName.includes('"')) {
+                await interaction.followUp({content: `:x: Operation name must be provided and cannot contain ".`,
+                    flags: Discord.MessageFlags.Ephemeral});
+                return;
+            }
+
+            // 3. Obtain lock, start MOD if not already.
             const key = await DeploymentActivityLogger.dataManager.lock();
             if (DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
                 await interaction.followUp({content: `:x: Deployment is already underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
-                await DeploymentActivityLogger.dataManager.startDeployment(key);
+                await DeploymentActivityLogger.dataManager.startDeployment(key, operationName);
                 await interaction.followUp({content: `:white_check_mark: Deployment started!`, flags: Discord.MessageFlags.Ephemeral});
-                Logger.logToChannel(`Deployment started by <@${interaction.user.id}>.`);
+                Logger.logToChannel(`Deployment "${operationName}" started by <@${interaction.user.id}>.`);
             }
             await DeploymentActivityLogger.dataManager.unlock(key);
         },
@@ -66,9 +78,10 @@ const commands: {[key: string]: ICommand} = {
             if (!DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
                 await interaction.followUp({content: `:x: Deployment is not underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
+                const operationName = DeploymentActivityLogger.dataManager.getOperationName(key);
                 DeploymentActivityLogger.dataManager.endDeployment(key);
-                await interaction.followUp({content: `:white_check_mark: Deployment ended.`, flags: Discord.MessageFlags.Ephemeral});
-                Logger.logToChannel(`Deployment ended by <@${interaction.user.id}>. Generating participants list for carnage report...\n` +
+                await interaction.followUp({content: `:white_check_mark: Deployment "${operationName}" ended.`,flags: Discord.MessageFlags.Ephemeral});
+                Logger.logToChannel(`Deployment "${operationName}" ended by <@${interaction.user.id}>. Generating participants list for carnage report...\n` +
                     `(Only members with at least ${Luxon.Duration.fromMillis(DeploymentActivityLogger.MINIMUM_TIME_TO_QUALIFY).as('minutes')} minutes of play time will be listed).`
                 );
                 const messages = generateParticipantsMessages(DeploymentActivityLogger.dataManager.getQualifiedMembers(key));

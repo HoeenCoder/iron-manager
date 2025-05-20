@@ -239,6 +239,7 @@ export namespace IronLogger {
 export namespace DeploymentActivityLogger {
     interface DeploymentActivityJSON {
         active: boolean,
+        operationName: string,
         started: string,
         members: {[memberId: string]: MemberDeploymentActivityRecord}
     }
@@ -269,6 +270,7 @@ export namespace DeploymentActivityLogger {
             if (!fs.existsSync(this.jsonFileLoc)) {
                 this.activityRecords = {
                     active: false,
+                    operationName: "",
                     started: '',
                     members: {}
                 };
@@ -383,7 +385,7 @@ export namespace DeploymentActivityLogger {
             return this.activityRecords.active;
         }
 
-        async startDeployment(key: string) {
+        async startDeployment(key: string, operationName: string) {
             this.tryKey(key);
             if (this.activityRecords.active) {
                 throw new Error(`Attempting to start a deployment while one is already running.`);
@@ -401,7 +403,7 @@ export namespace DeploymentActivityLogger {
             }
 
             this.activityRecords.started = this.prepareLogFile();
-            this.appendSpecialLog('Deployment Started.');
+            this.appendSpecialLog(`Deployment "${operationName}" Started.`);
 
             for (const [channelId, channel] of voiceCategory.children.cache) {
                 if (channel.type !== Discord.ChannelType.GuildVoice || channel.members.size < 1) continue;
@@ -419,6 +421,7 @@ export namespace DeploymentActivityLogger {
                 }
             }
 
+            this.activityRecords.operationName = operationName;
             this.activityRecords.active = true;
             this.writeJSON();
         }
@@ -430,6 +433,7 @@ export namespace DeploymentActivityLogger {
             }
 
             this.activityRecords.active = false;
+            const operationName = this.activityRecords.operationName;
             const endTime = Date.now();
             for (const memberId in this.activityRecords.members) {
                 if (this.activityRecords.members[memberId].joined) {
@@ -440,7 +444,12 @@ export namespace DeploymentActivityLogger {
                 }
             }
             this.writeJSON();
-            this.appendSpecialLog('Deployment Ended.');
+            this.appendSpecialLog(`Deployment "${operationName}" Ended.`);
+        }
+
+        getOperationName(key: string): string {
+            this.tryKey(key);
+            return this.activityRecords.operationName;
         }
 
         getQualifiedMembers(key: string): DeploymentQualificationRecord {
@@ -486,6 +495,7 @@ export namespace DeploymentActivityLogger {
         private resetJSON() {
             this.activityRecords = {
                 active: false,
+                operationName: "",
                 started: '',
                 members: {}
             };

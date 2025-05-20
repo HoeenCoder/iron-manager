@@ -68,6 +68,55 @@ setInterval(async () => {
     }
 }, PURGE_INTERVAL);
 
+async function createShipChannel(interaction: Discord.ChatInputCommandInteraction, prefix: string, postfix: string) {
+    if (!interaction.deferred) {
+        await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
+    }
+
+    // 1. Validation
+    const ownerIds = Object.values(CHANNEL_OWNERS);
+    if (ownerIds.includes(interaction.user.id) &&
+        !Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
+        await interaction.followUp({content: `:x: You already have a super destroyer VC, please use that or wait for it to expire before making a new one.`});
+        return;
+    }
+
+    if (!SHIP_PREFIXES.includes(prefix)) {
+        await interaction.followUp({content: `:x: invalid prefix "${prefix}"`});
+        return;
+    }
+
+    if (!SHIP_POSTFIXES.includes(postfix)) {
+        await interaction.followUp({content: `:x: invalid postfix "${postfix}"`});
+        return;
+    }
+
+    // 2. Create channel
+    const guild = await Utilities.getGuild();
+    const shipChannel = await guild.channels.create({
+        parent: Config.voice_category_id,
+        name: `SES ${prefix} ${postfix}`,
+        reason: `Super Destroyer VC deployed upon request of ${(interaction.member as Discord.GuildMember).displayName}`,
+        type: Discord.ChannelType.GuildVoice
+    });
+
+    CHANNEL_OWNERS[shipChannel.id] = interaction.user.id;
+
+    const intervalMinutes = PURGE_INTERVAL / 60000;
+    const embed = new Discord.EmbedBuilder()
+        .setColor(0x3b4d33)
+        .setTitle(`Super Destroyer Deployed!`)
+        .setDescription(`Your Super Destroyer Voice Channel has been deployed and is ready for use!`)
+        .addFields(
+            {name: `Voice Channel`, value: `<#${shipChannel.id}>`},
+            {name: `NOTICE`, value: `Super Destroyer Voice Channels expire after ${intervalMinutes} to ${intervalMinutes * 2} minutes of nobody using the channel. You can always re-create the channel if needed.`}
+        );
+
+    if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
+
+    await interaction.followUp({embeds: [embed]});
+}
+
 const commands: {[key: string]: ICommand} = {
     'create-destroyer-channel': {
         data: new Discord.SlashCommandBuilder()
@@ -84,53 +133,10 @@ const commands: {[key: string]: ICommand} = {
                     .setRequired(true)
                     .setAutocomplete(true)),
         async execute(interaction) {
-            await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
-
-            // 1. Validation
-            const ownerIds = Object.values(CHANNEL_OWNERS);
-            if (ownerIds.includes(interaction.user.id) &&
-                !Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: You already have a super destroyer VC, please use that or wait for it to expire before making a new one.`});
-                return;
-            }
-
             const prefix = interaction.options.getString('prefix') || '';
             const postfix = interaction.options.getString('postfix') || '';
 
-            if (!SHIP_PREFIXES.includes(prefix)) {
-                await interaction.followUp({content: `:x: invalid prefix "${prefix}"`});
-                return;
-            }
-
-            if (!SHIP_POSTFIXES.includes(postfix)) {
-                await interaction.followUp({content: `:x: invalid postfix "${postfix}"`});
-                return;
-            }
-
-            // 2. Create channel
-            const guild = await Utilities.getGuild();
-            const shipChannel = await guild.channels.create({
-                parent: Config.voice_category_id,
-                name: `SES ${prefix} ${postfix}`,
-                reason: `Super Destroyer VC deployed upon request of ${(interaction.member as Discord.GuildMember).displayName}`,
-                type: Discord.ChannelType.GuildVoice
-            });
-
-            CHANNEL_OWNERS[shipChannel.id] = interaction.user.id;
-
-            const intervalMinutes = PURGE_INTERVAL / 60000;
-            const embed = new Discord.EmbedBuilder()
-                .setColor(0x3b4d33)
-                .setTitle(`Super Destroyer Deployed!`)
-                .setDescription(`Your Super Destroyer Voice Channel has been deployed and is ready for use!`)
-                .addFields(
-                    {name: `Voice Channel`, value: `<#${shipChannel.id}>`},
-                    {name: `NOTICE`, value: `Super Destroyer Voice Channels expire after ${intervalMinutes} to ${intervalMinutes * 2} minutes of nobody using the channel. You can always re-create the channel if needed.`}
-                );
-
-            if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
-
-            await interaction.followUp({embeds: [embed]});
+            createShipChannel(interaction, prefix, postfix);
         },
         async autocomplete(interaction) {
             const focusedOption = interaction.options.getFocused(true);
@@ -178,6 +184,17 @@ const commands: {[key: string]: ICommand} = {
             });
 
             await interaction.respond(response.slice(0, 24));
+        },
+    },
+    'create-random-destroyer-channel': {
+        data: new Discord.SlashCommandBuilder()
+            .setName('create-random-destroyer-channel')
+            .setDescription('Create a temporary Super Destroyer voice channel with a random ship name.'),
+        async execute(interaction) {
+            const prefix = SHIP_PREFIXES[Math.floor(Math.random() * SHIP_PREFIXES.length)];
+            const postfix = SHIP_POSTFIXES[Math.floor(Math.random() * SHIP_POSTFIXES.length)];
+
+            createShipChannel(interaction, prefix, postfix);
         },
     },
     'random-ship-name': {

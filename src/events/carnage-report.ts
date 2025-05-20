@@ -49,7 +49,8 @@ const events: {[key: string]: IEvent} = {
                 'duplicates': 'Duplicates',
                 'invalidName': 'Invalid Nickname',
                 'namePermsError': 'Nickname Permissions Error',
-                'rankPermsError': 'Promotion Permissions Error'
+                'rankPermsError': 'Promotion Permissions Error',
+                'skippedEnvoys': 'Skipped Envoys'
             };
 
             for (const key in report) {

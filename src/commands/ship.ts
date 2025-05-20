@@ -136,7 +136,7 @@ const commands: {[key: string]: ICommand} = {
             const prefix = interaction.options.getString('prefix') || '';
             const postfix = interaction.options.getString('postfix') || '';
 
-            createShipChannel(interaction, prefix, postfix);
+            await createShipChannel(interaction, prefix, postfix);
         },
         async autocomplete(interaction) {
             const focusedOption = interaction.options.getFocused(true);
@@ -194,7 +194,7 @@ const commands: {[key: string]: ICommand} = {
             const prefix = SHIP_PREFIXES[Math.floor(Math.random() * SHIP_PREFIXES.length)];
             const postfix = SHIP_POSTFIXES[Math.floor(Math.random() * SHIP_POSTFIXES.length)];
 
-            createShipChannel(interaction, prefix, postfix);
+            await createShipChannel(interaction, prefix, postfix);
         },
     },
     'random-ship-name': {

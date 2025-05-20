@@ -88,7 +88,8 @@ const commands: {[key: string]: ICommand} = {
                 'duplicates': 'Duplicates',
                 'invalidName': 'Invalid Nickname',
                 'namePermsError': 'Nickname Permissions Error',
-                'rankPermsError': 'Promotion Permissions Error'
+                'rankPermsError': 'Promotion Permissions Error',
+                'skippedEnvoys': 'Skipped Envoys'
             };
 
             for (const key in report) {
@@ -179,7 +180,8 @@ const commands: {[key: string]: ICommand} = {
                         `The member's intended IRON count will be listed before the name eg: \`(VI -> @member)\` means that member should have 6 IRON now. ` +
                         `The bot has recorded that this member received IRON even though it encountered an error when issuing it.`},
                     {name: 'Promotion Permissions Error', value: `The bot was unable to update this member's roles after giving them IRON because the role(s) ` +
-                        `tried to assign are above the bot's highest role or do not exist. Please manually update this member's roles.`}
+                        `tried to assign are above the bot's highest role or do not exist. Please manually update this member's roles.`},
+                    {name: `Skipped Envoys`, value: `Envoys cannot earn IRON, the bot will always skip awarding IRON to them.`}
                 );
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);

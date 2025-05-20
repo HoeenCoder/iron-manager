@@ -194,7 +194,7 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
     }
 
     // 2. Assign roles, update name
-    const username = createUsername(0, ingameName);
+    const username = createUsername(rankCategory === 'E' ? -10 : 0, ingameName);
     if (applicant.manageable) {
         await applicant.setNickname(username);
     } else {

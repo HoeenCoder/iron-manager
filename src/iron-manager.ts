@@ -12,7 +12,8 @@ export interface IronDistributionResults {
     duplicates: Discord.GuildMember[],
     invalidName: Discord.GuildMember[],
     namePermsError: [Discord.GuildMember, string][],
-    rankPermsError: Discord.GuildMember[]
+    rankPermsError: Discord.GuildMember[],
+    skippedEnvoys: Discord.GuildMember[]
 }
 
 export let recentlyUpdatedNames: string[] = [];
@@ -26,13 +27,30 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
         duplicates: [],
         invalidName: [],
         namePermsError: [],
-        rankPermsError: []
+        rankPermsError: [],
+        skippedEnvoys: []
     };
     const attemptToIssue: Discord.GuildMember[] = [];
 
     for (let member of members) {
         if (completedIDs.includes(member.id)) {
             results.duplicates.push(member);
+            continue;
+        }
+
+        try {
+            if (isEnvoy(member)) {
+               results.skippedEnvoys.push(member);
+               completedIDs.push(member.id);
+               continue;
+            }
+        } catch (e) {
+            // should never happen, can't throw here safely.
+            await Logger.logToChannel(`Invalid name when attempting to check envoy status during iron distribution!` +
+                `Name: ${member.displayName}.\n\nListing user as having an invalid name in results.`
+            );
+            results.invalidName.push(member);
+            completedIDs.push(member.id);
             continue;
         }
 
@@ -69,7 +87,14 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             );
             continue;
         }
-        parsed[0]++;
+        if (parsed[0] < 0) {
+            // Should never happen, but just in case
+            await Logger.logToChannel(`Attempted to issue IRON to envoy! Name: ${member.displayName}.\n\n` +
+                `IRON was not issued. This should not happen, contact a maintainer.`
+            );
+        } else {
+            parsed[0]++;
+        }
 
         const username = createUsername(...parsed);
         if (!member.manageable) {
@@ -99,12 +124,25 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
     return results;
 }
 
+/**
+ * Extract IRON value and name from a username.
+ * Envoys (E) do not have IRON but are treated as a negative value
+ * for compatability (-10).
+ * @param username The username to parse in the format of [ IRON ] name
+ * @returns [IRON value, username]
+ */
 function parseUsername(username: string): [number, string] | null {
     // "[ XVII ] Example Name" -> [17, "Example Name"]
-    const matches = username.match(/^\[ ?((?:[IVXLCDM]|[0-9])+) ?\] (.+)$/i);
-    if (!matches) {
+    // "[ E ] Example Name" -> [-10, "Example Name"]
+    const matches = username.match(/^\[ ?((?:[IVXLCDME]|[0-9])+) ?\] (.+)$/i);
+    if (!matches || (matches[1] !== 'E' && matches[1].includes('E'))) {
         // bad username format
         return null;
+    }
+
+    if (matches[1] === 'E') {
+        // Envoy status
+        return [-10, matches[2]];
     }
 
     let numeral;
@@ -122,12 +160,28 @@ function parseUsername(username: string): [number, string] | null {
     return [numeral, matches[2]];
 }
 
+/**
+ * Creates a combined username from an IRON value and username.
+ * Negative IRON values are used for Enovys and become E.
+ * @param iron User's IRON value
+ * @param name User's name
+ * @returns User's combined name in the form of [ IRON ] name
+ */
 export function createUsername(iron: number, name: string): string {
     // 17, "Example Name" -> "[ XVII ] Example Name"
-    if (iron < 0) {
-        throw new Error(`IRON count when assembling username was negative. name: ${name}, iron: ${iron}`);
+    // -10, "Example Name" -> "[ E ] Example Name"
+    if (iron < -10) {
+        throw new Error(`IRON count when assembling username was invalid. name: ${name}, iron: ${iron}`);
     }
-    let numerals = (iron === 0 || iron > 500) ? iron + '' : RomanNumerals.toRoman(iron);
+
+    let numerals: string;
+    if (iron > 0 && iron <= 500) {
+        numerals = RomanNumerals.toRoman(iron);
+    } else if (iron < 0) {
+        numerals = 'E';
+    } else {
+        numerals = iron + '';
+    }
 
     // length check
     let length = 5 + numerals.length + name.length;
@@ -186,4 +240,20 @@ export async function tryPromotion(member: Discord.GuildMember, ironCount: strin
     await member.roles.add(rank.add);
     await member.roles.remove(rank.remove);
     return false;
+}
+
+/**
+ * Determines if a user is an envoy (has an IRON value of E).
+ * @param member The guild member to check
+ * @returns true if envoy, false if not
+ */
+export function isEnvoy(member: Discord.GuildMember): boolean {
+    const parsed = parseUsername(member.displayName);
+    if (!parsed) {
+        // Should never happen but...
+        throw new Error(`Unable to parse username when determining if user is envoy.`);
+    }
+
+    return parsed[0] < 0;
+
 }

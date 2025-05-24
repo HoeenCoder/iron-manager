@@ -183,7 +183,7 @@ export interface IConfig {
     }
 }
 
-const configPath = `${__dirname}/../storage/`;
+const configPath = `${__dirname}/../storage`;
 if (!fs.existsSync(`${configPath}/${Utilities.getFileName('config')}.json`)) {
     fs.writeFileSync(`${configPath}/${Utilities.getFileName('config')}.json`,
         // config-example is the same dev or otherwise

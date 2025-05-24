@@ -1,0 +1,17 @@
+services:
+  iron-bot:
+    image: iron-bot:prod
+    build:
+      context: .
+      target: prod
+    volumes:
+      - iron-bot-storage:/iron-bot/storage
+    environment:
+      DEV_MODE: false
+      CLIENT_ID: ${DEV_CLIENT_ID}
+      GUILD_ID: ${DEV_GUILD_ID}
+      TOKEN: ${DEV_TOKEN}
+    restart: unless-stopped
+
+volumes:
+  iron-bot-storage:

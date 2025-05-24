@@ -3,17 +3,11 @@ const { name, version } = require('./../package.json');
 // Basic enviroment checks
 console.log(`[${name}@${version}] Launching in ${process.env.DEV_MODE ? `development` : `production`} enviroment.`);
 
-const enviromentVariables = ['TOKEN', 'CLIENT_ID', 'GUILD_ID'];
+const enviromentVariables = ['DEV_MODE', 'TOKEN', 'CLIENT_ID', 'GUILD_ID'];
 for (const key of enviromentVariables) {
-    const trueKey = process.env.DEV_MODE ? `DEV_${key}` : key;
-    if (!process.env[trueKey]) {
-        console.log(`.env not configured! Missing enviroment variable "${trueKey}"! Aborting.`);
+    if (!process.env[key]) {
+        console.log(`Enviroment variable not configured! Missing "${key}"! Aborting.`);
         process.exit(1);
-    }
-
-    if (process.env.DEV_MODE) {
-        // copy dev enviroment variables to main ones for ease of use
-        process.env[key] = process.env[trueKey];
     }
 }
 

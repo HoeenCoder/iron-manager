@@ -1,0 +1,9 @@
+node_modules
+dist
+design
+.env
+storage/*
+!storage/config-example.json
+.dockerignore
+.git
+.gitignore

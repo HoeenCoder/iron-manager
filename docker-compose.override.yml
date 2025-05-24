@@ -1,0 +1,15 @@
+services:
+  iron-bot:
+    image: iron-bot:dev
+    build:
+      target: dev
+    volumes:
+      - ./src:/iron-bot/src
+      - ./storage:/iron-bot/storage
+      - /iron-bot/node_modules
+    environment:
+      DEV_MODE: true
+      CLIENT_ID: ${DEV_CLIENT_ID}
+      GUILD_ID: ${DEV_GUILD_ID}
+      TOKEN: ${DEV_TOKEN}
+    restart: "no"

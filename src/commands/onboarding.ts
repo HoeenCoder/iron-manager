@@ -267,7 +267,7 @@ const commands: {[key: string]: ICommand} = {
                     new Discord.ButtonBuilder()
                         .setCustomId('start-onboarding-button')
                         .setLabel('Begin Onboarding')
-                        .setStyle(Discord.ButtonStyle.Primary))
+                        .setStyle(Discord.ButtonStyle.Primary));
 
             await interaction.reply({
                 content: `To join the 1st Colonial Regiment, please fill out the onboarding form by clicking this button:`,
@@ -854,14 +854,7 @@ const commands: {[key: string]: ICommand} = {
             }
 
             await interaction.reply({
-                content: `Welcome ${matches.map(id => `<@${id}>`).join(', ')} to the 1st Colonial Regiment!\n\n` +
-                    `You can find an overview of how things work in <#1228740800565743646>. ` +
-                    `We host MODs multiple times a week, you can find the schedule for the next one(s) in <#1300502782918266932>. ` +
-                    `Play in MODs to earn IRON (the number next to your name), you can earn 1 IRON per week from playing in MODs.\n\n` +
-                    `You are also welcomed and encouraged to dive with others whenever you like. You can ping the ON CALL role in <#1289960010801221692>. ` +
-                    `If you want that role yourself, get it from <#1244035446439280711>.\n\n` +
-                    `If you have any questions, feel free to open a ticket here <#1302076162935230563> if you need to speak with the command team. ` +
-                    `Alternatively, you can ask in <#1227465911062233118> for simple questions that anyone can answer.`
+                content: Utilities.getKeyedMessage("1CR_Welcome", matches.map(id => `<@${id}>`).join(', '))
             });
         }
     }

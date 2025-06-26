@@ -150,6 +150,36 @@ export class Utilities {
             throw new Error(`Guild member not found.`);
         }
     }
+
+    /**
+     * Obtains a configurable message from a key string.
+     * @param key The key for the message, relates to an entry in text-keys.json
+     * @param args Arguments for the keyed message. Keyed messages can have indexes such as {0} to indicate which argument to insert.
+     * @returns The associated message or a default error message.
+     */
+    static getKeyedMessage(key: string, ...args: string[]): string {
+        let message = TextKeys[key].slice();
+        if (!message) {
+            return `Unable to find message for key "${key}". Contact a developer to have this fixed.`;
+        }
+
+        const matcher = /{([0-9]+)}/g;
+        const matches = message.matchAll(matcher);
+
+        for (const match of matches) {
+            const index = parseInt(match[1]);
+            let arg: string;
+            if (isNaN(index)) {
+                arg = '{NaN Argument Index!}';
+            } else {
+                arg = args[index] || '{Required Argument Missing!}';
+            }
+
+            message = message.replace(match[0], arg);
+        }
+
+        return message;
+    }
 }
 
 export interface IConfig {
@@ -183,15 +213,23 @@ export interface IConfig {
     }
 }
 
-const configPath = `${__dirname}/../storage/`;
-if (!fs.existsSync(`${configPath}/${Utilities.getFileName('config')}.json`)) {
-    fs.writeFileSync(`${configPath}/${Utilities.getFileName('config')}.json`,
-        // config-example is the same dev or otherwise
-        fs.readFileSync(`${configPath}/config-example.json`, {encoding: 'utf-8'}),
-    {encoding: 'utf-8'});
+interface ITextKeys {
+    [key: string]: string
 }
 
-export let Config: IConfig = JSON.parse(fs.readFileSync(`${configPath}/${Utilities.getFileName('config')}.json`, {encoding: 'utf-8'}));
+const configPath = `${__dirname}/../storage/`;
+for (let baseFileName of ['config', 'text-keys']) {
+    const fileName = Utilities.getFileName(baseFileName);
+    if (!fs.existsSync(`${configPath}/${fileName}.json`)) {
+        fs.writeFileSync(`${configPath}/${fileName}.json`,
+            // example files are the same dev or otherwise
+            fs.readFileSync(`${configPath}/${baseFileName}-example.json`, {encoding: 'utf-8'}),
+                {encoding: 'utf-8'});
+    }
+}
+
+export const Config: IConfig = JSON.parse(fs.readFileSync(`${configPath}/${Utilities.getFileName('config')}.json`, {encoding: 'utf-8'}));
+const TextKeys: ITextKeys = JSON.parse(fs.readFileSync(`${configPath}/${Utilities.getFileName('text-keys')}.json`, {encoding: 'utf-8'}));
 
 /**
  * Component Interface - Represents a component's (button or string select menu) response method.

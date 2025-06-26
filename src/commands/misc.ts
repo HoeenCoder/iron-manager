@@ -92,6 +92,45 @@ const commands: {[key: string]: ICommand} = {
 
             await interaction.followUp({embeds: [embed]});
         }
+    },
+    'print-auto-promote-report': {
+        data: new Discord.SlashCommandBuilder()
+            .setName('print-auto-promote-report')
+            .setDescription('Prints a report for IRON Manager\'s auto promotion system.')
+            .setDefaultMemberPermissions(Discord.PermissionFlagsBits.Administrator),
+        async execute(interaction) {
+            if (!Utilities.roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
+                await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
+                return;
+            }
+
+            await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
+            let output: string[] = [];
+            let currentText = `# Automatic Promotion Configuration\n-# These values can be changed by editing config.json\n\n`;
+
+            for (let rank in Config.ranks) {
+                const rankDetails = Config.ranks[rank];
+
+                let rankSection = `## ${rank} IRON\n`;
+                for (let key in rankDetails) {
+                    // @ts-ignore this is clearly safe
+                    const roles: string[] = rankDetails[key].slice();
+                    rankSection += `- ${key}: ${roles.map(id => `<@&${id}>`).join(', ') || 'None'}\n`;
+                }
+                rankSection += `\n`;
+
+                if (currentText.length + rankSection.length > 950) {
+                    output.push(currentText);
+                    currentText = rankSection;
+                } else {
+                    currentText += rankSection;
+                }
+            }
+
+            output.push(currentText);
+
+            await interaction.followUp({content: output.join(''), flags: Discord.MessageFlags.Ephemeral});
+        },
     }
 };
 

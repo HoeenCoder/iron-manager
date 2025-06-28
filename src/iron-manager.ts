@@ -13,7 +13,8 @@ export interface IronDistributionResults {
     invalidName: Discord.GuildMember[],
     namePermsError: [Discord.GuildMember, string][],
     rankPermsError: Discord.GuildMember[],
-    skippedEnvoys: Discord.GuildMember[]
+    skippedEnvoys: Discord.GuildMember[],
+    commendedForService: Discord.GuildMember[]
 }
 
 export let recentlyUpdatedNames: string[] = [];
@@ -28,9 +29,14 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
         invalidName: [],
         namePermsError: [],
         rankPermsError: [],
-        skippedEnvoys: []
+        skippedEnvoys: [],
+        commendedForService: []
     };
-    const attemptToIssue: Discord.GuildMember[] = [];
+    const attemptTo = {
+        issue: ([] as Discord.GuildMember[]),
+        commend: ([] as Discord.GuildMember[]),
+        markParticipated: ([] as Discord.GuildMember[])
+    };
 
     for (let member of members) {
         if (completedIDs.includes(member.id)) {
@@ -46,11 +52,17 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             }
         } catch (e) {
             // should never happen, can't throw here safely.
-            await Logger.logToChannel(`Invalid name when attempting to check envoy status during iron distribution!` +
+            await Logger.logToChannel(`Invalid name when attempting to check envoy status during iron distribution!\n\n` +
                 `Name: ${member.displayName}.\n\nListing user as having an invalid name in results.`
             );
             results.invalidName.push(member);
             completedIDs.push(member.id);
+            continue;
+        }
+
+        if (!parseUsername(member.displayName)) {
+            // Name in bad format, cancel distribution, ask for human intervention
+            results.invalidName.push(member);
             continue;
         }
 
@@ -60,25 +72,34 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             results.notIssued.push(member);
         } else {
             // Issue iron, specifically iron will be issued after JSON is updated
-            // check if their name is OK first
-            if (!parseUsername(member.displayName)) {
-                // Name in bad format, cancel distribution, ask for human intervention
-                results.invalidName.push(member);
-            } else {
-                attemptToIssue.push(member);
-            }
+            attemptTo.issue.push(member);
         }
 
+        // Track the number of deployments regardless
+        if (type === 'deployment') {
+            attemptTo.markParticipated.push(member);
+            if (data.numDeployments >= 4 && !data.commendation) {
+                // Attempt to issue an automatic commendation for attending 5+ MODs in a week
+                // We check for >= 4 here because that value is incremented below when we write IRON.
+                // Its about to be incremented as its a deployment, we just want to do all the writes
+                // in one big batch and be done with it.
+                attemptTo.commend.push(member);
+            }
+        }
         completedIDs.push(member.id);
     }
 
     // Write data and end transaction
-    IronLogger.dataManager.writeIron(key, attemptToIssue.map(m => m.id), type);
+    IronLogger.dataManager.writeIron(key, attemptTo.issue.map(m => m.id), type);
+    IronLogger.dataManager.incrementDeploymentTracker(key, attemptTo.markParticipated.map(m => m.id));
+    if (attemptTo.commend.length) {
+        IronLogger.dataManager.writeIron(key, attemptTo.commend.map(m => m.id), 'commendation');
+    }
     await IronLogger.dataManager.unlock(key);
 
     // Update usernames, ranks
     recentlyUpdatedNames = [];
-    for (let member of attemptToIssue) {
+    for (let member of attemptTo.issue.concat(attemptTo.commend)) {
         const parsed = parseUsername(member.displayName);
         if (!parsed) {
             // should never happen, can't throw here safely.
@@ -117,7 +138,14 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
             continue;
         }
 
-        results.issued.push(member);
+        if (attemptTo.commend.includes(member)) {
+            // Mark as having been commended
+            // Its not possible to both earn a commendation for participation
+            // and earn deployment IRON at the exact same time, we don't need to check that.
+            results.commendedForService.push(member);
+        } else {
+            results.issued.push(member);
+        }
     }
     recentlyUpdatedNames = [];
 
@@ -228,17 +256,31 @@ export async function tryPromotion(member: Discord.GuildMember, ironCount: strin
 
     // 4. Update roles
     const roleManager = member.guild.roles;
-    const roles = rank.add.concat(rank.remove);
+    const changingRoles = rank.add.concat(rank.remove);
 
-    for (const r of roles) {
+    for (const r of changingRoles) {
         const role = await roleManager.fetch(r);
         if (!role || !role.editable) {
             return true;
         }
     }
 
-    await member.roles.add(rank.add);
-    await member.roles.remove(rank.remove);
+    const roles = Object.keys(member.roles.cache);
+    // Update member's roles
+    for (const role of rank.remove) {
+        if (roles.includes(role)) {
+            roles.splice(roles.indexOf(role), 1);
+        }
+    }
+    for (const role of rank.add) {
+        if (!roles.includes(role)) {
+            roles.push(role);
+        }
+    }
+
+    // One set call to mitigate a rare API race condition
+    await member.roles.set(roles);
+
     return false;
 }
 

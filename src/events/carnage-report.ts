@@ -50,7 +50,8 @@ const events: {[key: string]: IEvent} = {
                 'invalidName': 'Invalid Nickname',
                 'namePermsError': 'Nickname Permissions Error',
                 'rankPermsError': 'Promotion Permissions Error',
-                'skippedEnvoys': 'Skipped Envoys'
+                'skippedEnvoys': 'Skipped Envoys',
+                'commendedForService': 'Commendation Issued for 5 MODs'
             };
 
             for (const key in report) {

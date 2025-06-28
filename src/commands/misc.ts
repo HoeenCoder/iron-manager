@@ -84,7 +84,8 @@ const commands: {[key: string]: ICommand} = {
                 .setDescription(`Has ${member.displayName} earned IRON this week and how?`)
                 .addFields(
                     {name: 'Deployment', value: `${records.deployment ? 'EARNED' : 'NOT EARNED'}`},
-                    {name: 'Commendation', value: `${records.commendation ? 'EARNED' : 'NOT EARNED'}`}
+                    {name: 'Commendation', value: `${records.commendation ? 'EARNED' : 'NOT EARNED'}`},
+                    {name: 'Deployments this Week', value: `${records.numDeployments} of 5 for an automatic commendation.`}
                 ).setTimestamp()
                 .setFooter({text: `IRON can be earned once per category weekly. To see when a new week starts, use /week.`});
 

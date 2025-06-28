@@ -85,6 +85,7 @@ export namespace IronLogger {
     export type IronAchivementType = 'deployment' | 'commendation';
 
     export interface MemberWeeklyIronLog {
+        numDeployments: number;
         deployment?: true;
         commendation?: true;
     }
@@ -171,7 +172,7 @@ export namespace IronLogger {
         readIron(key: string, memberID: string): MemberWeeklyIronLog {
             this.tryKey(key);
 
-            return this.iron.members[memberID] || {};
+            return this.iron.members[memberID] || {numDeployments: 0};
         }
 
         /**
@@ -185,8 +186,25 @@ export namespace IronLogger {
             this.tryKey(key);
 
             for (let m of members) {
-                if (!this.iron.members[m]) this.iron.members[m] = {};
+                if (!this.iron.members[m]) this.iron.members[m] = {numDeployments: 0};
                 this.iron.members[m][type] = true;
+            }
+
+            this.writeJSON();
+        }
+
+        /**
+         * Increment the number of deployments that each member
+         * in the provided set has participated in this week.
+         * @param key The transaction key to ensure the method caller holds the lock for this data.
+         * @param members Array of Discord snowflake user IDs
+         */
+        incrementDeploymentTracker(key: string, members: string[]): void {
+            this.tryKey(key);
+
+            for (let m of members) {
+                if (!this.iron.members[m]) this.iron.members[m] = {numDeployments: 0};
+                this.iron.members[m].numDeployments++;
             }
 
             this.writeJSON();

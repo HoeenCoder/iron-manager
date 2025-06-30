@@ -119,8 +119,7 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
 
         const username = createUsername(...parsed);
         if (!member.manageable) {
-            const newNumerals = parsed[0] <= 500 && parsed[0] > 0 ? RomanNumerals.toRoman(parsed[0]) : parsed[0] + '';
-            results.namePermsError.push([member, newNumerals]);
+            results.namePermsError.push([member, toNumerals(parsed[0])]);
             continue;
         }
         recentlyUpdatedNames.push(member.id);
@@ -162,7 +161,15 @@ export async function distributeIron(members: Discord.GuildMember[], type: IronL
 function parseUsername(username: string): [number, string] | null {
     // "[ XVII ] Example Name" -> [17, "Example Name"]
     // "[ E ] Example Name" -> [-10, "Example Name"]
-    const matches = username.match(/^\[ ?((?:[IVXLCDME]|[0-9])+) ?\] (.+)$/i);
+
+    // Handle requested joke edge case
+    // "[ NICE ] Example Name" -> [69, "Example Name"]
+    let matches = username.match(/^\[ ?NICE ?\] (.+)$/i);
+    if (matches) {
+        return [69, matches[1]];
+    }
+
+    matches = username.match(/^\[ ?((?:[IVXLCDME]|[0-9])+) ?\] (.+)$/i);
     if (!matches || (matches[1] !== 'E' && matches[1].includes('E'))) {
         // bad username format
         return null;
@@ -202,14 +209,7 @@ export function createUsername(iron: number, name: string): string {
         throw new Error(`IRON count when assembling username was invalid. name: ${name}, iron: ${iron}`);
     }
 
-    let numerals: string;
-    if (iron > 0 && iron <= 500) {
-        numerals = RomanNumerals.toRoman(iron);
-    } else if (iron < 0) {
-        numerals = 'E';
-    } else {
-        numerals = iron + '';
-    }
+    let numerals = toNumerals(iron);
 
     // length check
     let length = 5 + numerals.length + name.length;
@@ -229,6 +229,19 @@ export function createUsername(iron: number, name: string): string {
             // Use [IRON] NAME, trim to 32 chars if over 32
             return `[${iron}] ${name}`.substring(0, 32);
         }
+    }
+}
+
+function toNumerals(iron: number) {
+    if (iron === 69) {
+        // Joke edge case
+        return "NICE";
+    } else if (iron > 0 && iron <= 500) {
+        return RomanNumerals.toRoman(iron);
+    } else if (iron < 0) {
+        return 'E';
+    } else {
+        return iron + '';
     }
 }
 

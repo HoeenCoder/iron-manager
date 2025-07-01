@@ -278,7 +278,7 @@ export async function tryPromotion(member: Discord.GuildMember, ironCount: strin
         }
     }
 
-    const roles = Object.keys(member.roles.cache);
+    const roles = Array.from(member.roles.cache.keys());
     // Update member's roles
     for (const role of rank.remove) {
         if (roles.includes(role)) {

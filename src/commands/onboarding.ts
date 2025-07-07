@@ -136,7 +136,8 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
             userInput: interaction.message.embeds[0].fields.find(f => f.name === 'Platform')?.value || '',
             matchers: {
                 'playstation': /(?:ps(?:4|5)?(?: pro)?|playstation)/i,
-                'steam': /(?:pc|steam(?: ?deck)?)/i
+                'steam': /(?:pc|steam(?: ?deck)?)/i,
+                'xbox': /(?:xbox(?: ?series ?(?:x|s))?|x(?:b(?:s|x)?)?)/i,
             }
         },
         {
@@ -289,7 +290,8 @@ const commands: {[key: string]: ICommand} = {
                             new Discord.ActionRowBuilder<Discord.ModalActionRowComponentBuilder>().addComponents(
                                 new Discord.TextInputBuilder()
                                     .setCustomId('onboarding-platform')
-                                    .setLabel('Do you play on Steam or Playstation?')
+                                    .setLabel('What platform do you play on?')
+                                    .setPlaceholder('Steam, Playstation, or Xbox')
                                     .setStyle(Discord.TextInputStyle.Short)
                                     .setMaxLength(11)
                                     .setRequired(true)),

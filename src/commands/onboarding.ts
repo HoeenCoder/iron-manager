@@ -137,7 +137,7 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
             matchers: {
                 'playstation': /(?:ps(?:4|5)?(?: pro)?|playstation)/i,
                 'steam': /(?:pc|steam(?: ?deck)?)/i,
-                'xbox': /(?:xbox(?: ?series ?(?:x|s))?|x(?:b(?:s|x)?)?)/i,
+                'xbox': /(?:xbox(?: ?series ?(?:x|s)?)?|x(?:b(?:s|x)?)?)/i,
             }
         },
         {

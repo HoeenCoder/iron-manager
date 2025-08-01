@@ -10,7 +10,7 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Replies with pong.'),
 
         async execute(interaction) {
-            await interaction.reply({content: 'Pong!', flags: Discord.MessageFlags.Ephemeral});
+            await Utilities.reply(interaction, {content: 'Pong!', flags: Discord.MessageFlags.Ephemeral});
         }
     },
     week: {
@@ -43,7 +43,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            await interaction.followUp({embeds: [embed]});
+            await Utilities.reply(interaction, {embeds: [embed]});
         }
     },
     earnableiron: {
@@ -69,7 +69,7 @@ const commands: {[key: string]: ICommand} = {
             // Get the GuildMember for this user
             const member = await Utilities.getGuildMember(providedUser.id, await Utilities.getGuild()).catch(() => null);
             if (!member) {
-                await interaction.reply({content: `:x: Member not found.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Member not found.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -91,7 +91,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            await interaction.followUp({embeds: [embed]});
+            await Utilities.reply(interaction, {embeds: [embed]});
         }
     },
     'print-auto-promote-report': {
@@ -101,7 +101,7 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.Administrator),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -130,7 +130,7 @@ const commands: {[key: string]: ICommand} = {
 
             output.push(currentText);
 
-            await interaction.followUp({content: output.join(''), flags: Discord.MessageFlags.Ephemeral});
+            await Utilities.reply(interaction, {content: output.join(''), flags: Discord.MessageFlags.Ephemeral});
         },
     }
 };

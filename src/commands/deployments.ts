@@ -27,6 +27,7 @@ const commands: {[key: string]: ICommand} = {
             .setDescription('Start tracking member playtime for a major order deployment. Requires Freedom Captain.')
             .addStringOption(o => o.setName('operation_name')
                 .setDescription('Name of the operation for the MOD report')
+                .setMaxLength(40)
                 .setRequired(true))
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
@@ -34,7 +35,7 @@ const commands: {[key: string]: ICommand} = {
 
             // 1. check permissions
             if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`,
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`,
                     flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -42,7 +43,7 @@ const commands: {[key: string]: ICommand} = {
             // 2. Validate OP name
             const operationName = interaction.options.getString('operation_name');
             if (!operationName || operationName.includes('"')) {
-                await interaction.followUp({content: `:x: Operation name must be provided and cannot contain ".`,
+                await Utilities.reply(interaction, {content: `:x: Operation name must be provided and cannot contain ".`,
                     flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
@@ -50,10 +51,10 @@ const commands: {[key: string]: ICommand} = {
             // 3. Obtain lock, start MOD if not already.
             const key = await DeploymentActivityLogger.dataManager.lock();
             if (DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
-                await interaction.followUp({content: `:x: Deployment is already underway.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Deployment is already underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
                 await DeploymentActivityLogger.dataManager.startDeployment(key, operationName);
-                await interaction.followUp({content: `:white_check_mark: Deployment started!`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:white_check_mark: Deployment started!`, flags: Discord.MessageFlags.Ephemeral});
                 Logger.logToChannel(`Deployment "${operationName}" started by <@${interaction.user.id}>.`);
             }
             await DeploymentActivityLogger.dataManager.unlock(key);
@@ -69,18 +70,18 @@ const commands: {[key: string]: ICommand} = {
 
             // 1. check permissions
             if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             // 2. Obtain lock, end MOD if not already.
             const key = await DeploymentActivityLogger.dataManager.lock();
             if (!DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
-                await interaction.followUp({content: `:x: Deployment is not underway.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Deployment is not underway.`, flags: Discord.MessageFlags.Ephemeral});
             } else {
                 const operationName = DeploymentActivityLogger.dataManager.getOperationName(key);
                 DeploymentActivityLogger.dataManager.endDeployment(key);
-                await interaction.followUp({content: `:white_check_mark: Deployment "${operationName}" ended.`,flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:white_check_mark: Deployment "${operationName}" ended.`,flags: Discord.MessageFlags.Ephemeral});
                 Logger.logToChannel(`Deployment "${operationName}" ended by <@${interaction.user.id}>. Generating participants list for carnage report...\n` +
                     `(Only members with at least ${Luxon.Duration.fromMillis(DeploymentActivityLogger.MINIMUM_TIME_TO_QUALIFY).as('minutes')} minutes of play time will be listed).`
                 );
@@ -113,7 +114,7 @@ const commands: {[key: string]: ICommand} = {
             // Get the GuildMember for this user
             const member = await Utilities.getGuildMember(providedUser.id, await Utilities.getGuild()).catch(() => null);
             if (!member) {
-                await interaction.reply({content: `:x: Member not found.`});
+                await Utilities.reply(interaction, {content: `:x: Member not found.`});
                 return;
             }
 
@@ -137,7 +138,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            await interaction.followUp({embeds: [embed]});
+            await Utilities.reply(interaction, {embeds: [embed]});
 
             await DeploymentActivityLogger.dataManager.unlock(key);
         },
@@ -152,7 +153,7 @@ const commands: {[key: string]: ICommand} = {
 
             // 1. check permissions
             if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -161,11 +162,11 @@ const commands: {[key: string]: ICommand} = {
 
             const messages = generateParticipantsMessages(DeploymentActivityLogger.dataManager.getQualifiedMembers(key));
             for (let m of messages) {
-                await interaction.followUp({content: m, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: m, flags: Discord.MessageFlags.Ephemeral});
             }
 
             if (DeploymentActivityLogger.dataManager.isDeploymentActive(key)) {
-                await interaction.followUp({content: `:warning: **Warning! Deployment is still ongoing, this list is subject to change!** ` +
+                await Utilities.reply(interaction, {content: `:warning: **Warning! Deployment is still ongoing, this list is subject to change!** ` +
                     `If you want to end the deployment, use /end-deployment.`, flags: Discord.MessageFlags.Ephemeral});
             }
 
@@ -184,24 +185,24 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('deploy')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             const file = interaction.options.getString('file') || '';
             const validFiles = DeploymentActivityLogger.dataManager.getLogFileNames();
             if (!validFiles.includes(file)) {
-                await interaction.reply({content: `:x: invalid file name "${file}"`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: invalid file name "${file}"`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             if (!interaction.channel || !interaction.channel.isSendable()) {
-                await interaction.reply({content: ':x: You must use this command in a text channel.', flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: ':x: You must use this command in a text channel.', flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             // send file
-            await interaction.reply({
+            await Utilities.reply(interaction, {
                 content: `Deployment log file attached. You can search for members by their unique discord ID: https://www.reddit.com/r/discordapp/comments/myncgd/comment/gvvysmj/`,
                 files: [{
                     attachment: DeploymentActivityLogger.dataManager.getFullLogFilePath(file),

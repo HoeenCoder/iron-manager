@@ -77,17 +77,17 @@ async function createShipChannel(interaction: Discord.ChatInputCommandInteractio
     const ownerIds = Object.values(CHANNEL_OWNERS);
     if (ownerIds.includes(interaction.user.id) &&
         !Utilities.roleBasedPermissionCheck('deploy', interaction.member as Discord.GuildMember)) {
-        await interaction.followUp({content: `:x: You already have a super destroyer VC, please use that or wait for it to expire before making a new one.`});
+        await Utilities.reply(interaction, {content: `:x: You already have a super destroyer VC, please use that or wait for it to expire before making a new one.`});
         return;
     }
 
     if (!SHIP_PREFIXES.includes(prefix)) {
-        await interaction.followUp({content: `:x: invalid prefix "${prefix}"`});
+        await Utilities.reply(interaction, {content: `:x: invalid prefix "${prefix}"`});
         return;
     }
 
     if (!SHIP_POSTFIXES.includes(postfix)) {
-        await interaction.followUp({content: `:x: invalid postfix "${postfix}"`});
+        await Utilities.reply(interaction, {content: `:x: invalid postfix "${postfix}"`});
         return;
     }
 
@@ -114,7 +114,7 @@ async function createShipChannel(interaction: Discord.ChatInputCommandInteractio
 
     if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-    await interaction.followUp({embeds: [embed]});
+    await Utilities.reply(interaction, {embeds: [embed]});
 }
 
 const commands: {[key: string]: ICommand} = {
@@ -220,7 +220,7 @@ const commands: {[key: string]: ICommand} = {
                 );
 
             replyOptions.embeds = [embed];
-            await interaction.reply(replyOptions);
+            await Utilities.reply(interaction, replyOptions);
         }
     }
 };

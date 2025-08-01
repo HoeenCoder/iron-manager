@@ -19,6 +19,28 @@ export class Utilities {
     }
 
     /**
+     * Replies to an interaction. This wrapper ensures the interaction is not expired and
+     * handles followup replies to reduce errors when responding to commands.
+     * @param interaction The interaction to respond to.
+     * @param payload The payload to respond with. Same arguments are used here as when replying to an interaction normally.
+     */
+    public static async reply(interaction: Discord.CommandInteraction | Discord.ButtonInteraction | Discord.StringSelectMenuInteraction | Discord.ModalSubmitInteraction,
+            payload: string | Discord.MessagePayload | Discord.InteractionReplyOptions) {
+        // Actual limits are 15 minutes/3 seconds, we cut off 300ms to give the message time to transmit
+        const timeLimit = (interaction.deferred || interaction.replied ? 1000 * 60 * 15 : 1000 * 3) - 300;
+        if (interaction.createdTimestamp + timeLimit <= Date.now()) {
+            throw new Error(`Attempted to reply to expired interaction (Time Limit: ${timeLimit}) (${interaction.isCommand() ?
+                'command: ' + interaction.command?.name : 'component: ' + interaction.customId})`);
+        }
+
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp(payload);
+        } else {
+            await interaction.reply(payload);
+        }
+    }
+
+    /**
      * Determine if a member can perform the requested action.
      * @param permissionKey The specific category of action being taken.
      * Each key is associated with an array of roles that can perform those tasks in config.json.

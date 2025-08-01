@@ -28,20 +28,20 @@ const commands: {[key: string]: ICommand} = {
             // Should be enforced by discord, verify it actually was
             const type: IronLogger.IronAchivementType = interaction.options.getString('type') as IronLogger.IronAchivementType;
             if (!['deployment', 'commendation'].includes(type)) {
-                await interaction.followUp({content: `:x: Type must be "deployment" or "commendation".`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Type must be "deployment" or "commendation".`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             if (type === "deployment") {
                 // Deployment IRON requires freedom captain+
                 if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                    await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('iron')}.`, flags: Discord.MessageFlags.Ephemeral});
+                    await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('iron')}.`, flags: Discord.MessageFlags.Ephemeral});
                     return;
                 }
             } else {
                 // Commendation IRON required IRON commission+
                 if (!Utilities.roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
-                    await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
+                    await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
                     return;
                 }
             }
@@ -53,7 +53,7 @@ const commands: {[key: string]: ICommand} = {
             const input = interaction.options.getString('members');
             const matches = [...(input || '').matchAll(/<@([0-9]+)>/g)].map(v => v[1]);
             if (!input || !matches || !matches.length) {
-                await interaction.followUp({content: `:x: No members provided.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: No members provided.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -136,7 +136,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) reportEmbed.setThumbnail(Config.thumbnail_icon_url);
 
-            await interaction.followUp({
+            await Utilities.reply(interaction, {
                 embeds: [reportEmbed],
                 flags: Discord.MessageFlags.Ephemeral
             });
@@ -160,7 +160,7 @@ const commands: {[key: string]: ICommand} = {
 
             // check permissions
             if (!Utilities.roleBasedPermissionCheck('iron', interaction.member as Discord.GuildMember)) {
-                await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('iron')}.`});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('iron')}.`});
                 return;
             }
 
@@ -190,7 +190,7 @@ const commands: {[key: string]: ICommand} = {
 
             if (Config.thumbnail_icon_url) embed.setThumbnail(Config.thumbnail_icon_url);
 
-            await interaction.followUp({embeds: [embed]});
+            await Utilities.reply(interaction, {embeds: [embed]});
         }
     }
 };

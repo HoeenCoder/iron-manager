@@ -107,7 +107,7 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
     const applicant = await Utilities.getGuildMember(userId, guild).catch(() => null);
 
     if (!applicant) {
-        await interaction.followUp({
+        await Utilities.reply(interaction, {
             content: `Could not find applicant to approve, did they leave the server?\n\n` +
                 `You can delete this application with the "Delete Application" button.`,
             flags: Discord.MessageFlags.Ephemeral
@@ -117,7 +117,7 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
 
     // Ensure applicant wasn't already approved/rejected.
     if (!applicant.roles.cache.hasAny(...Config.ranks[rankCategory].required)) {
-        await interaction.followUp({
+        await Utilities.reply(interaction, {
             content: `Applicant does not have the role(s) new recruits have, maybe they were already approved or rejected?\n\n` +
                 `You can delete this application with the "Delete Application" button.`,
             flags: Discord.MessageFlags.Ephemeral,
@@ -230,7 +230,7 @@ async function approveApplicant(interaction: Discord.ButtonInteraction, rankCate
                     .setStyle(Discord.ButtonStyle.Primary)
             )
 
-        await interaction.followUp({
+        await Utilities.reply(interaction, {
             embeds: [problemEmbed],
             components: [buttonRow]
         });
@@ -250,7 +250,7 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.Administrator),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('all', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('all')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -259,7 +259,7 @@ const commands: {[key: string]: ICommand} = {
                 onboardingChannel = await getApplicationForum();
             } catch (e) {
                 // Forum not configured
-                await interaction.reply({content: `:x: Could not find onboarding report channel, please make sure its configured!`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Could not find onboarding report channel, please make sure its configured!`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
@@ -270,7 +270,7 @@ const commands: {[key: string]: ICommand} = {
                         .setLabel('Begin Onboarding')
                         .setStyle(Discord.ButtonStyle.Primary));
 
-            await interaction.reply({
+            await Utilities.reply(interaction, {
                 content: `To join the 1st Colonial Regiment, please fill out the onboarding form by clicking this button:`,
                 components: [button]
             });
@@ -346,7 +346,7 @@ const commands: {[key: string]: ICommand} = {
 
                     const applicant = interaction.member;
                     if (!applicant.roles.cache.hasAll(...Config.ranks[0].required)) {
-                        await interaction.followUp({
+                        await Utilities.reply(interaction, {
                             content: `:x: Only applicants can fill out an application form.`,
                             flags: Discord.MessageFlags.Ephemeral
                         });
@@ -358,7 +358,7 @@ const commands: {[key: string]: ICommand} = {
                     if (thread && 
                         (thread.appliedTags.includes(Config.onboarding.tags.pending) ||
                         thread.appliedTags.includes(Config.onboarding.tags.flagged))) {
-                        await interaction.followUp({
+                        await Utilities.reply(interaction, {
                             content: `:x: You already have a pending application open. ` +
                                 `Feel free to reach out to us if you have any questions or concerns.`,
                             flags: Discord.MessageFlags.Ephemeral,
@@ -416,7 +416,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     OnboardingLogger.logCreation(applicant, platform, name, hasMic, continent, ageCheck);
-                    await interaction.followUp({content: `:white_check_mark: Your application was received and is under review!`, flags: Discord.MessageFlags.Ephemeral});
+                    await Utilities.reply(interaction, {content: `:white_check_mark: Your application was received and is under review!`, flags: Discord.MessageFlags.Ephemeral});
                 }
             },
             'onboarding-applicant-approve': {
@@ -430,7 +430,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -448,7 +448,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -463,7 +463,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -471,7 +471,7 @@ const commands: {[key: string]: ICommand} = {
                     const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
                     const applicant = await Utilities.getGuildMember(userId, await Utilities.getGuild()).catch(() => null);
                     if (!applicant) {
-                        await interaction.reply({
+                        await Utilities.reply(interaction, {
                             content: `Could not find applicant to reject, did they leave the server?`,
                             flags: Discord.MessageFlags.Ephemeral
                         });
@@ -480,7 +480,7 @@ const commands: {[key: string]: ICommand} = {
 
                     // Ensure applicant wasn't already approved/rejected.
                     if (!applicant.roles.cache.hasAny(...Config.ranks['0'].required)) {
-                        await interaction.reply({
+                        await Utilities.reply(interaction, {
                             content: `Applicant does not have the role(s) new recruits have, maybe they were already approved or rejected?\n\n` +
                                 `You can delete this application with the "Delete Application" button.`,
                             flags: Discord.MessageFlags.Ephemeral,
@@ -513,7 +513,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -523,7 +523,7 @@ const commands: {[key: string]: ICommand} = {
                     const rejectionRecord = rejectionTable[interaction.user.id];
                     const applicant = await Utilities.getGuildMember(rejectionRecord[0], await Utilities.getGuild()).catch(() => null);
                     if (!applicant) {
-                        await interaction.followUp({
+                        await Utilities.reply(interaction, {
                             content: `Could not find applicant to reject, did they leave the server?`
                         });
                         return;
@@ -540,7 +540,7 @@ const commands: {[key: string]: ICommand} = {
                         });
                     } catch (e) {
                         // User has DMs blocked, cannot notify them.
-                        await interaction.followUp(`Applicant has DMs blocked, unable to notify them of their rejection and reason.`);
+                        await Utilities.reply(interaction, `Applicant has DMs blocked, unable to notify them of their rejection and reason.`);
                     }
 
                     if (interaction.channel) {
@@ -563,18 +563,18 @@ const commands: {[key: string]: ICommand} = {
                             components: []
                         });
                     } else {
-                        await interaction.followUp(`Unable to edit application for <@${applicant.id}> (${applicant.displayName}), message not found.`);
+                        await Utilities.reply(interaction, `Unable to edit application for <@${applicant.id}> (${applicant.displayName}), message not found.`);
                     }
 
                     if (applicant.kickable) {
                         if (process.env.DEV_MODE) {
-                            await interaction.followUp(`Rejected applicant <@${applicant.id}> would be kicked, but development mode is enabled which disables this feature.`);
+                            await Utilities.reply(interaction, `Rejected applicant <@${applicant.id}> would be kicked, but development mode is enabled which disables this feature.`);
                         } else {
                             await applicant.kick(`Application rejected by ${interaction.user.displayName}, reason: ${reason}`);
-                            await interaction.followUp(`Application rejected, applicant kicked.`);
+                            await Utilities.reply(interaction, `Application rejected, applicant kicked.`);
                         }
                     } else {
-                        await interaction.followUp(`Attempted to kick rejected applicant <@${applicant.id}>, but could not. Please manually remove them from the server.`);
+                        await Utilities.reply(interaction, `Attempted to kick rejected applicant <@${applicant.id}>, but could not. Please manually remove them from the server.`);
                     }
 
                     if (interaction.channel?.isThread()) {
@@ -591,7 +591,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -620,7 +620,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -670,9 +670,9 @@ const commands: {[key: string]: ICommand} = {
                             await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "flagged");
                         }
                         OnboardingLogger.logFlag(applicantId, interaction.member as Discord.GuildMember, reason);
-                        await interaction.followUp(`:white_check_mark: Application flagged.`);
+                        await Utilities.reply(interaction, `:white_check_mark: Application flagged.`);
                     } else {
-                        await interaction.followUp(`Unable to flag application, message not found.`);
+                        await Utilities.reply(interaction, `Unable to flag application, message not found.`);
                     }
                 },
             },
@@ -684,7 +684,7 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -713,7 +713,7 @@ const commands: {[key: string]: ICommand} = {
                         await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "pending");
                     }
                     OnboardingLogger.logFlagCleared(userId, interaction.member as Discord.GuildMember);
-                    await interaction.reply({content: `<@${interaction.user.id}> cleared the flag on <@${userId}>'s application.\nThe flag reason was:\n> ${reason}`});
+                    await Utilities.reply(interaction, {content: `<@${interaction.user.id}> cleared the flag on <@${userId}>'s application.\nThe flag reason was:\n> ${reason}`});
                 },
             },
             'onboarding-applicant-close': {
@@ -726,7 +726,7 @@ const commands: {[key: string]: ICommand} = {
                     await interaction.deferReply({flags: Discord.MessageFlags.Ephemeral});
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.followUp({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
@@ -749,7 +749,7 @@ const commands: {[key: string]: ICommand} = {
                         await setThreadTag(interaction.channel as Discord.ForumThreadChannel, "closed");
                     }
                     OnboardingLogger.logClose(userId, interaction.member as Discord.GuildMember);
-                    await interaction.followUp({content: `:white_check_mark: Application Closed. ` +
+                    await Utilities.reply(interaction, {content: `:white_check_mark: Application Closed. ` +
                         `The applicant was NOT notified of this or kicked. **Please make sure to tell them what to do next.**`,
                         flags: Discord.MessageFlags.Ephemeral
                     });
@@ -763,13 +763,13 @@ const commands: {[key: string]: ICommand} = {
                     }
 
                     if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                        await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                        await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                         return;
                     }
 
                     // Delete the message
                     await interaction.message.delete();
-                    await interaction.reply({content: `:white_check_mark: Problem Report Deleted.`, flags: Discord.MessageFlags.Ephemeral});
+                    await Utilities.reply(interaction, {content: `:white_check_mark: Problem Report Deleted.`, flags: Discord.MessageFlags.Ephemeral});
 
                     // Ensure post is archived
                     (interaction.channel as Discord.ForumThreadChannel).setArchived(true);
@@ -789,24 +789,24 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             const file = interaction.options.getString('file') || '';
             const validFiles = OnboardingLogger.getValidFileNames();
             if (!validFiles.includes(file)) {
-                await interaction.reply({content: `:x: invalid file name "${file}"`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: invalid file name "${file}"`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             if (!interaction.channel || !interaction.channel.isSendable()) {
-                await interaction.reply({content: ':x: You must use this command in a text channel.', flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: ':x: You must use this command in a text channel.', flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             // send file
-            await interaction.reply({
+            await Utilities.reply(interaction, {
                 content: `Application log file attached.`,
                 files: [{
                     attachment: OnboardingLogger.getFullLogFilePath(file),
@@ -844,18 +844,18 @@ const commands: {[key: string]: ICommand} = {
             .setDefaultMemberPermissions(Discord.PermissionFlagsBits.MoveMembers),
         async execute(interaction) {
             if (!Utilities.roleBasedPermissionCheck('onboard', interaction.member as Discord.GuildMember)) {
-                await interaction.reply({content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: Access Denied. Requires one of ${Utilities.getRequiredRoleString('onboard')}.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
             const input = interaction.options.getString('members', true);
             const matches = [...(input || '').matchAll(/<@([0-9]+)>/g)].map(v => v[1]);
             if (!input || !matches || !matches.length) {
-                await interaction.reply({content: `:x: No members provided.`, flags: Discord.MessageFlags.Ephemeral});
+                await Utilities.reply(interaction, {content: `:x: No members provided.`, flags: Discord.MessageFlags.Ephemeral});
                 return;
             }
 
-            await interaction.reply({
+            await Utilities.reply(interaction, {
                 content: Utilities.getKeyedMessage("1CR_Welcome", matches.map(id => `<@${id}>`).join(', '))
             });
         }

@@ -67,7 +67,7 @@ const commands: {[key: string]: ICommand} = {
             await interaction.deferReply(replyOptions);
 
             // Get the GuildMember for this user
-            const member = await Utilities.getGuildMember(providedUser.id, await Utilities.getGuild()).catch(() => null);
+            const member = await Utilities.getGuildMember(providedUser.id, await Utilities.getGuild(interaction)).catch(() => null);
             if (!member) {
                 await Utilities.reply(interaction, {content: `:x: Member not found.`, flags: Discord.MessageFlags.Ephemeral});
                 return;

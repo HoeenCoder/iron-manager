@@ -101,7 +101,7 @@ async function setThreadTag(thread: Discord.ForumThreadChannel, tag: keyof IConf
  */
 async function approveApplicant(interaction: Discord.ButtonInteraction, rankCategory: '0' | 'E') {
     // 1. Validation
-    const guild = await Utilities.getGuild();
+    const guild = await Utilities.getGuild(interaction);
     const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
     const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
     const applicant = await Utilities.getGuildMember(userId, guild).catch(() => null);
@@ -469,7 +469,7 @@ const commands: {[key: string]: ICommand} = {
 
                     const userMention = interaction.message.embeds[0].fields.find(f => f.name === 'Account')?.value || '';
                     const userId = (userMention.match(/<@([0-9]+)>/) || [])[1];
-                    const applicant = await Utilities.getGuildMember(userId, await Utilities.getGuild()).catch(() => null);
+                    const applicant = await Utilities.getGuildMember(userId, await Utilities.getGuild(interaction)).catch(() => null);
                     if (!applicant) {
                         await Utilities.reply(interaction, {
                             content: `Could not find applicant to reject, did they leave the server?`,
@@ -521,7 +521,7 @@ const commands: {[key: string]: ICommand} = {
 
                     // DM reason, link to nexus and kick
                     const rejectionRecord = rejectionTable[interaction.user.id];
-                    const applicant = await Utilities.getGuildMember(rejectionRecord[0], await Utilities.getGuild()).catch(() => null);
+                    const applicant = await Utilities.getGuildMember(rejectionRecord[0], await Utilities.getGuild(interaction)).catch(() => null);
                     if (!applicant) {
                         await Utilities.reply(interaction, {
                             content: `Could not find applicant to reject, did they leave the server?`

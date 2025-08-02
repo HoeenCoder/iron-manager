@@ -10,7 +10,7 @@ const events: {[key: string]: IEvent} = {
             // 1. Validate
             if (!Config.report_channel_id || message.channelId !== Config.report_channel_id) return;
 
-            const guild = await Utilities.getGuild().catch(() => null);
+            const guild = message.guild;
             if (!guild) {
                 // Silently return
                 return;

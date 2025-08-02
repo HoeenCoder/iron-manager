@@ -103,7 +103,7 @@ export class Utilities {
      * @throws An error if the guild isn't found or isn't avaliable.
      * If you don't want an error as a result, I recommend appending this call with .catch(() => null);
      */
-    static async getGuild(guildId?: string): Promise<Discord.Guild> {
+    static async getGuild(guildId?: string | Discord.BaseInteraction): Promise<Discord.Guild> {
         if (!guildId) {
             // Depreciation warning
             if (!Utilities.deprecationWarningIssued) {
@@ -113,7 +113,11 @@ export class Utilities {
             guildId = process.env.GUILD_ID as string;
         }
 
-        const guild = await client.guilds.fetch(process.env.GUILD_ID as string);
+        if (guildId instanceof Discord.BaseInteraction) {
+            guildId = guildId.guildId || '';
+        }
+
+        const guild = await client.guilds.fetch(guildId as string);
         if (!guild || !guild.available) {
             throw new Error(`Guild "${guildId}" is unavaliable or does not exist.`);
         }

@@ -58,7 +58,7 @@ const commands: {[key: string]: ICommand} = {
             }
 
             // Convert to GuildMembers
-            const guild = await Utilities.getGuild();
+            const guild = await Utilities.getGuild(interaction);
             const members: Discord.GuildMember[] = [];
             for (const id of matches) {
                 let member = await Utilities.getGuildMember(id, guild).catch(() => null);
